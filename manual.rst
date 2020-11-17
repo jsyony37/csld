@@ -1,3 +1,12 @@
+A Guide to CSLD
+###############
+
+Fei Zhou
+
+Last modified: Oct. 1, 2020
+
+.. contents::
+
 **********************
 Introduction to CSLD
 **********************
@@ -72,11 +81,9 @@ How to cite
 
 If you use CSLD in your research, please cite the following works:
 
-- Fei Zhou, Weston Nielson, Yi Xia, and Vidvuds Ozolins, Phys. Rev. Lett. 113, 185501, (2014). `<http://dx.doi.org/10.1103/PhysRevLett.113.185501>`_
-- Fei Zhou et al, arxiv:`1805.08903`_, arxiv:`1805.08904`_.
-
-.. _1805.08903: https://arxiv.org/abs/1805.08903
-.. _1805.08904: https://arxiv.org/abs/1805.08904
+* Fei Zhou, Weston Nielson, Yi Xia, and Vidvuds Ozolins, Phys. Rev. Lett. 113, 185501, (2014). `<http://dx.doi.org/10.1103/PhysRevLett.113.185501>`_
+*	\F. Zhou, W. Nielson, Y. Xia, and V. Ozolins, Phys. Rev. B 100, 184308 (2019). `<https://link.aps.org/doi/10.1103/PhysRevB.100.184308>`_
+*	\F. Zhou, B. Sadigh, D. Aberg, Y. Xia, and V. Ozolins, Phys. Rev. B 100, 184309 (2019). `<https://link.aps.org/doi/10.1103/PhysRevB.100.184309>`_
 
 
 ***************
@@ -85,6 +92,9 @@ Tutorial
 
 More detailed documentation can be found in the `Manual`_ section next.
 This section provides a short tutorial To get started quickly after installation. The files can be found in the examples/ directory.
+
+
+CSLD requires an input structure file of very high accuracy. See the `Manual`_ section for details to prepare a VASP POSCAR-styled file first.
 
 
 Si
@@ -124,7 +134,7 @@ Input files preparation
 Now let's see how to start from scratch, by copying over the config file control.in and symmetrizing a primitive cell Si/POSCAR (pretending that Si/POSCAR was relaxed without proper symmetry)::
 
   $ cd ..; mkdir Si-test2; cp Si/csld.in Si-test2; cd Si-test2
-  $ polaron_main --task primitive --prim ../Si/POSCAR --tol 0.001 >POSCAR
+  $ polaron_main --task primitive_no_standardize --prim ../Si/POSCAR --tol 0.001 >POSCAR
 
 Next, prepare training data::
 
@@ -188,12 +198,14 @@ Never mind the artifact in the phonon dispersion curve at zone center. It's the 
 
 Input files for long-range forces
 ---------------------------------
-To obtain the Born effective charges and dielectric tensor required for long-range treatment,  dielectric calculations should be performed with density functional perturbation theory (DFPT) for the primitive cell before csld fitting. Obtain born_charge.txt and epsilon_inf.txt by
+To obtain the Born effective charges and dielectric tensor required for long-range treatment, dielectric calculations should be performed with density functional perturbation theory (DFPT) for the primitive cell before csld fitting. Obtain born_charge.txt and epsilon_inf.txt by
 
 
 ::
 
   $ polaron_main --task born --p1 PATH_TO_DFPT_CALCULATION/OUTCAR
+
+Failure to use this script to generate symmetrized files may result in errors.
 
 ******
 Manual
@@ -214,11 +226,11 @@ Input files
 
 The csld_main code takes two basic input files: **POSCAR** and **csld.in**.
 
-- The structure of the primitive cell in VASP 5 format. The file name is specified in the config file (POSCAR, see above). It's important to keep high precision in the structure file. We recommend using the **polaron_main** helper script to symmetrize your primitive cell
+- The structure of the primitive cell in VASP 5 format. The file name is specified in the config file (POSCAR, see above). It's important to keep high precision in the structure file. We STRONGLY recommend using the **polaron_main** helper script to symmetrize your primitive cell
 
 ::
 
-  $ polaron_main --task primitive --prim your_input_POSCAR --tol 0.001 >POSCAR
+  $ polaron_main --task primitive_no_standardize --prim your_input_POSCAR --tol 0.001 >POSCAR
 
 
 - csld.in, the main configuration file containing essentially all the settings.
@@ -311,6 +323,19 @@ The csld_main script runs in the following steps, each controlled by a command-l
   "solution_in", str , "filename for loading previous solution instead of fitting"
   "solution_known", str, "filename for previously obtained parameter phi_in. The force predicted by phi_in will be subtracted from the total force. This is useful in conjunction with submodel to fit in several steps, e.g. assuming max_order=4, first fit harmonic terms with submodel=harmonic 1 2; solution_out=sol_2nd, then fit anharmonic terms with solution_known=sol_2nd; submodel1=anh 3 4; solution_out=solution_all"
 
+- Pairwise force-field setup step to capture the bulk of the anharmonicity and to make fitting the residual force/energy easier. Turned **off** by default
+
+  - switch "--ldff_step STEP". **0**=off, 2=on.
+
+.. csv-table:: "[LDFF]" section
+  :header: "tag", "value", "description"
+  :widths: 4, 4, 16
+
+  num_basis, int, "Number of basis"
+  orbit_indices, "int [int]", "list of clusters to include in LDFF, usually choose only the nearest-neighbor pairs"
+  interpolation_pts, "int int int", "min, max, interval of sampling points"
+  basis_2, str, "pair basis functions. See Si/csld.in-forcefield for an example"
+
 - Phonon step
 
   - switch "--phonon_step STEP". 0=skip, **1** = compute.
@@ -319,7 +344,7 @@ The csld_main script runs in the following steps, each controlled by a command-l
   :header: "tag", "value", "description"
   :widths: 4, 4, 16
 
-  nac, int, "Method for non-analytic correction. **-1** =disabled, 0=long range treatment in arxiv:`1805.08904`_"
+  nac, int, "Method for non-analytic correction. **-1** =disabled, 0=long range treatment in PRB 100, 184309 (2019)."
   "wavevector", str, "If specified, plot phonon dispersion. wavevector = Auto will turn on automatic generation of special paths in reciprocal space. Manual settings e.g. [[25,  [0,0,0],'\Gamma', [0,0.5,0.5], 'X']] will add 25 points between zone center and X point"
   "unit", str, "Unit for dispersion and DOS. One of THz, meV, eV, cm"
   "dos_grid", int x 3, "If specified, plot density states sampled on a grid, e.g. 10 10 10"
@@ -331,7 +356,7 @@ The csld_main script runs in the following steps, each controlled by a command-l
 
 - Exporting force constants step.
 
-  - controlled by "--save_pot_step STEP". **0** = skip, 1=save.
+  - switch "--save_pot_step STEP". **0** = skip, 1=save.
 
 .. csv-table:: "[export_potential]" section
   :header: "tag", "value", "description"
@@ -370,4 +395,29 @@ Output files
 
 .. _ShengBTE: http://www.shengbte.org/
 .. _modified version of ShengBTE: https://doi.org/10.1063/1.5040887
+
+
+**********************
+FAQ
+**********************
+This is a list of Frequently Asked Questions about CSLD.  Feel free to
+suggest new entries!
+
+How do I...
+============
+
+... select cutoffs for force constants?
+   For anharmonic FCs, include at the very least the second NN shell for 3rd order and first NN shell for 4th order.
+
+... decide the number of supercells needed?
+   Once you made a choice on your model based on cutoffs, look for the final number of symmetrized FCs left. The number of supercell calculations should be at least N(symm)/3N(atom).
+
+... use CSLD with another DFT code (Quantum ESPRESSO, etc)?
+    Quite minimal: convert the structure to VASP5 format, and supply the computed forces to force.txt as a plain text table. It might be slightly trickier to figure out how to extract the dielectric constant or Born effective charge for semiconductors.
+
+I got error message ...
+========================
+
+... "ERROR: to get corrections properly, please increase [model]dpcor_bond to approximately the cutoff distance of first neighbor shell"
+    This means that you have a semiconductor system that needs dipole interaction corrections (see CSLD phonon paper PRB 2019). Set dpcor_bond under [model] as suggested.
 

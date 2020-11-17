@@ -1,8 +1,19 @@
 UNAME_S := $(shell uname -s)
 UNAME_N := $(shell uname -n | sed 's/[0-9]*//g')
+ARCH := $(shell uname -p)
 
 
 ifeq ($(UNAME_S),Linux)
+ifeq ($(ARCH),ppc64le)
+LIB =
+F2PY = f2py3
+OPTFLAG = -O
+FFLAGS= -fopenmp -cpp
+CMD = ${F2PY} --fcompiler=gfortran -c  --link-lapack_opt --opt="-cpp -heap-arrays ${OPTFLAG}" ${LIB} --f90flags="${FFLAGS}"
+F90=gfortran
+F77=${F90}
+F77FLAGS = ${FFLAGS}
+else
 #LIB = -lmkl_rt 
 LIB = -lmkl_rt -L/opt/intel-14.0/mkl/lib/intel64
 # if --link-lapack_opt fails, try to link to mkl manually with mkl_rt library
@@ -13,6 +24,7 @@ CMD = ${F2PY} --fcompiler=intelem   -c  --link-lapack_opt --opt="-cpp -heap-arra
 F90=ifort
 F77=${F90}
 F77FLAGS = -qopenmp -O3 -warn nousage -xHost -no-prec-div -mtune=pentium4 -noautomatic -heap-arrays 0 -fpp
+endif
 endif
 
 ifeq ($(UNAME_S),Darwin)
@@ -30,6 +42,7 @@ endif
 #FFLAGS+= -g -fbacktrace -fbounds-check -ffree-line-length-none -ftrapv
 
 .SUFFIXES:
+
 
 #BINARIES = bregman.so f_phonon.so bcs_driver.so f_util.so
 BINARIES = bregman.so f_phonon.so f_util.so get_matcov.so gruneisen.so

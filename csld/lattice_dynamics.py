@@ -17,12 +17,11 @@ from .basic_lattice_model import BasicLatticeModel
 from .interface_vasp import Poscar
 from .cluster import Cluster
 from .structure import SupercellStructure
-from .util.mathtool import MixedIndexForImproper, IntegerDigits, tensor_constraint, RMS
+from .util.mathtool import MixedIndexForImproper, IntegerDigits, tensor_constraint, RMS, mychop
 from .util.tool import pad_right, matrix2text
 from _c_util import fct_trans_c, ld_get_correlation, get_nullspace, init_ldff_basis, ldff_get_corr
 from .coord_utils import ReadPBC2Cart
 from .util.string_utils import str2arr, str2bool
-from f_phonon import f_phonon
 
 import logging
 logger = logging.getLogger(__name__)
@@ -95,7 +94,9 @@ class LDModel(BasicLatticeModel):
                 print("debug> translation of", repr(clus))
 
             dimTensor = 3** npt_ex
-            Bmat = spmat((dimTensor, self.nfct_tot))
+            #Bmat = spmat((dimTensor, self.nfct_tot))
+# annoying bug in scipy.sparse matrices !! Bmat not computed properly. Using normal/dense matrices for now.
+            Bmat = spmat((dimTensor, self.nfct_tot)).todense()
             foundClus = False
             for sumpt in sumPts:
                 clusSum = clus.append_site(sumpt)
@@ -108,15 +109,18 @@ class LDModel(BasicLatticeModel):
                 # print("identified",[found, ioF, igF, pi])
                 if found:
                     foundClus = True
+# annoying bug in scipy.sparse matrices !! Bmat not computed properly
                     Bmat[:, self.orb_idx_full[ioF]:self.orb_idx_full[ioF+1]]+=\
-                        fct_trans_c(npt_ex, 3, rot_mats[igF], pi)
+                        fct_trans_c(npt_ex, 3, rot_mats[igF], pi).todense()
+                        # fct_trans_c(npt_ex, 3, rot_mats[igF], pi)
             if not foundClus:
                 print('  ',iorb, " nothing found for ", clus)
                 continue
 
+# annoying bug in scipy.sparse matrices !! Bmat not computed properly
+            Bmat = spmat(Bmat)
             BmatCollect.append(Bmat)
             Bmat = Bmat.dot(Cmat.T)
-            # Bmat[abs(Bmat)< 1E-9] = 0
 
             if npt_ex > 999999:
                 print("bypassing ", clus)
@@ -127,7 +131,7 @@ class LDModel(BasicLatticeModel):
                     print(Bmat)
                 # if not (scipy.sparse.isspmatrix(Bmat) and Bmat.getnnz()<=0):
                 # Cmat = nullspace_rref(Bmat.toarray()).dot(Cmat)
-                Cmat = get_nullspace(Bmat).dot(Cmat)
+                Cmat = mychop(get_nullspace(Bmat).dot(Cmat), 1e-12)
                 print("  %4d + sum(a) %d remaining" % (iorb, Cmat.shape[0]))
 
         self.Cmat = Cmat
@@ -288,6 +292,7 @@ class LDModel(BasicLatticeModel):
                   sum([list(range(self.ord_range[i-1]+1, self.ord_range[i]+1)) for i in o if i<=maxfitord], []) if o[0]>=0 else list(range(-o[0],-o[1]))], sol0]
                 for (nm, o) in name_ord for uscale in u_list for ldffscale in ld_scalelist]
 
+
     def CheckNumericTranslationalInvariance(self, trans=np.array([1.0, 2.0, 3.0])):
         """
         Apply uniform translation, calculate the force
@@ -325,7 +330,7 @@ class LDModel(BasicLatticeModel):
         if corrtype == 'e':
             totNF = sum([len(sc[1]) for sc in sclist])
         elif corrtype == 'f':
-            # ignore the last atom because of translational invariance
+            # ignore the last atom because of translational invariance (subtract delForce=1)
             totNF = sum([3*(Poscar.from_file(rd+"/POSCAR").structure.num_sites - delForce) for sc in sclist for rd in sc[1]])
         else:
             raise ValueError("ERROR: expecting to fit f(orce) or e(energy) but found %s"%(corrtype))
@@ -455,6 +460,7 @@ class LDModel(BasicLatticeModel):
                                   np.array([orb.cluster.factorial for orb in self.orbits]),
                                   np.array([op.rot_inv for op in self.prim.spacegroup])))
 
+
     def save_fct(self, sol, outf, scmat, combine_improper=True):
         """
         :param sol: solution vector
@@ -469,6 +475,7 @@ class LDModel(BasicLatticeModel):
         self.save_fct_pot(outf+'.pot', self.get_full_fct(sol), sol[self.nfct:], scinfo,
                           combine_improper=combine_improper)
 
+
     def save_fct_lat(self, outf, scinfo):
         """
 
@@ -481,7 +488,6 @@ class LDModel(BasicLatticeModel):
         natom = self.prim.num_sites
         ncell = scinfo.n_cell
         SCposFrac=  scinfo.frac_coords
-        # print("debug mass", self.prim.atomic_masses)
         outs =[matrix2text(self.prim.lattice._matrix), matrix2text(scinfo.sc_mat), str(natom)]
         outs += ["%f %f %f %d" % tuple(self.prim.frac_coords[i].tolist()+[self.prim.atomic_numbers[i]]) for i in range(natom)]
         outs += [str(SCposFrac.shape[0]), '']
@@ -678,7 +684,11 @@ class LDModel(BasicLatticeModel):
         with open(fc_name, 'w') as modified: modified.write("%d\n"%(icount2) + fp.getvalue())
         fp.close()
 
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     def load_solution(self, sol_f, potential_coords_ijkl=True):
         """
         sol_f: file_name_of_solution [order_to_keep]
@@ -787,6 +797,7 @@ class LDModel(BasicLatticeModel):
         """
         :param s:  structure with epsilon_inf and born_charge
         """
+        from f_phonon import f_phonon
         if s.intensive_properties['epsilon_inf'] is None:
             return np.zeros((3*s.num_sites,3*s.num_sites))
         return f_phonon.get_fcm_dipole(s.lattice.matrix.T, s.lattice.inv_matrix, 1E-18, s.cart_coords.T,
@@ -797,6 +808,7 @@ class LDModel(BasicLatticeModel):
         """
         s: supercell
         """
+        from f_phonon import f_phonon
         fcm_dp = self.get_hessian_dipole(s)
         if self._dpcor is None:
             return fcm_dp
@@ -841,6 +853,7 @@ class LDModel(BasicLatticeModel):
 
 
     def get_dpcor(self, bondlen, errtol=1e-7):
+        from f_phonon import f_phonon
         offd=[[0,0,1],[1,2,2]]
         offdflatUp = [1,2,5]
         offdflatDn = [3,6,7]
@@ -858,8 +871,10 @@ class LDModel(BasicLatticeModel):
         # create an LD model using nearest neighbor only
         ldNN = init_ld_model(self.prim, {'model_type':'LD', 'max_order':2, 'cluster_diameter':str(bondlen),
           'proper_diameter':str(bondlen),'cluster_filter':'lambda cls: True'}, {}, 2, 2, 0, False)
-        print(ldNN)
+        #print(ldNN)
         C1mats = ldNN.isotropy_derivative_constraint()[1+2*npt:]
+        if not C1mats:
+            raise ValueError('ERROR: to get corrections properly, please increase [model]dpcor_bond to approximately the cutoff distance of first neighbor shell')
         C1 = spmat(scipy.sparse.vstack(C1mats))[:,1+12*npt:]
         nvar= C1.shape[0]
 

@@ -13,6 +13,7 @@ import logging
 import numpy as np
 import scipy
 import scipy.sparse
+
 from cssolve.csfit import csfit, predict_holdout
 
 
@@ -57,7 +58,7 @@ def process_common_options(options):
         options.clus_step = 1
         options.symC_step = 1
         options.train_step = 4
-        options.fit_step = 1    
+        options.fit_step = 1
     # Another fit reusing existing info
     if options.refit:
         options.clus_step = 1
@@ -151,8 +152,13 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
         submodels = [[x[0], ' '.join(x[1:])] for x in submodels]
         knownsol = setting.get('solution_known', '')
         submodels = model.get_submodels(submodels, setting=setting, knownsol=knownsol)
+<<<<<<< HEAD
         
         ibest, solutions = csfit(Amat, fval[:,0], 1, mulist,
+=======
+
+        ibest, solutions, rel_err = csfit(Amat, fval[:,0], 1, mulist,
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 method=int(setting['method']),
                 maxIter=int(setting['maxiter']),
                 tol=float(setting['tolerance']),
@@ -177,7 +183,7 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
         print("ERROR: Unknown fit_step: ", step)
         exit(-1)
     print("+ Fitting done. Best solution", ibest)
-    return ibest, solutions
+    return ibest, solutions, rel_err
 
 
 def predict(model, sols, setting, step):

@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 def LPTClusterEquivalentByTranslation(LPT10,LPT20,returnTranslated):
     from copy import deepcopy
     import numpy as np
+=======
+
+
+
+def LPTClusterEquivalentByTranslation(LPT10,LPT20,returnTranslated):
+    from copy import deepcopy
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 #perform round operation:
     lpt1=deepcopy(LPT10)
     LPT1=deepcopy(LPT10)
@@ -27,11 +35,19 @@ def LPTClusterEquivalentByTranslation(LPT10,LPT20,returnTranslated):
         i=0
         while i < npt:
             if LPT1[0][1] == LPT2[i][1]:
+<<<<<<< HEAD
                 trDirect=np.array(LPT1[0][0])-np.array(LPT2[i][0])
             #loop over atomic positions in LPT2 and lpt2 (return lpt2)
                 for j in range(len(LPT2)):
                     LPT2[j][0]=(np.array(LPT2[j][0])+trDirect).tolist()
                     lpt2[j][0]=(np.array(lpt2[j][0])+trDirect).tolist()
+=======
+                trDirect=array(LPT1[0][0])-array(LPT2[i][0])
+            #loop over atomic positions in LPT2 and lpt2 (return lpt2)
+                for j in range(len(LPT2)):
+                    LPT2[j][0]=(array(LPT2[j][0])+trDirect).tolist()
+                    lpt2[j][0]=(array(lpt2[j][0])+trDirect).tolist()
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
             #loop end
                 LPT2.sort()
                 if sortLPT1==LPT2:
@@ -55,16 +71,27 @@ if False:
 #    t2=[[[0.0, -1.0, -1.0], 7], [[1.0, -1.0, -2.0], 10], [[1.0, 0.0, -1.0], 25]]
     t2=[[[1.0, -1.0, -2.0], 10],[[0.0, -1.0, -1.0], 7], [[1.0, 0.0, -1.0], 25]]
 #    print(LPTClusterEquivalentByTranslation(t1,t2,False))
+<<<<<<< HEAD
 #    print(LPTClusterEquivalentByTranslation(t1,t2,True))
+=======
+    print(LPTClusterEquivalentByTranslation(t1,t2,True))
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 
 
 
 def relativePosition(origMappedOne2One, final):
+<<<<<<< HEAD
     import numpy as np
     resl=[]
     for i in final:
        # resl.append([origMappedOne2One.allindex(i)+1])
         tmp=(np.array(allindex(i,origMappedOne2One))+1).tolist()
+=======
+    resl=[]
+    for i in final:
+       # resl.append([origMappedOne2One.allindex(i)+1])
+        tmp=(array(allindex(i,origMappedOne2One))+1).tolist()
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
         resl.append(tmp)
     #print tmp
     for i in range(len(resl)):
@@ -78,6 +105,7 @@ def relativePosition(origMappedOne2One, final):
 
 
 def FCTrans(npt, DIM, gamma, pi):
+<<<<<<< HEAD
     import numpy as np
     import math
     dimTensor=int(math.pow(DIM, npt))
@@ -95,6 +123,17 @@ def FCTrans(npt, DIM, gamma, pi):
                 print('k :',k)
                 print('pi[k] :',pi[k])
                 print('idx2[pi[k]-1] :',idx2[pi[k]-1])
+=======
+    dimTensor=int(math.pow(DIM, npt))
+    Gm=List2D(0.0, dimTensor, dimTensor)
+    for i in range(dimTensor):
+        idx1=list(array(IntegerDigits(i,DIM, npt))+1)
+        for j in range(dimTensor):
+            idx2=list(array(IntegerDigits(j,DIM, npt))+1)
+            Gm[i][j]=1.0
+            for k in range(npt):
+                tmp1=idx1[k]
+>>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 tmp2=idx2[pi[k]-1]
                 Gm[i][j]=Gm[i][j]*gamma[tmp1-1][tmp2-1]
     return Gm
