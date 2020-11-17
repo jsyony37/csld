@@ -37,6 +37,9 @@ csld.egg-info/dependency_links.txt
 csld.egg-info/requires.txt
 csld.egg-info/top_level.txt
 csld/../Makefile
+csld/../bregman.so
+csld/../f_phonon.so
+csld/../f_util.so
 csld/../compile/f_util/f_util.f90
 csld/../cssolve/bcs.f90
 csld/../cssolve/bcs_driver.f90
@@ -58,11 +61,15 @@ csld/phonon/dostet.f90
 csld/phonon/f_phonon.f90
 csld/phonon/find_Ewald_eta_screened.f
 csld/phonon/gbox.f
+csld/phonon/get_matcov.f90
+csld/phonon/gruneisen.f90
+csld/phonon/head.py
 csld/phonon/lattc.f
 csld/phonon/pdstet.f
 csld/phonon/pdstet.f90
 csld/phonon/phonon.py
 csld/phonon/plotter.py
+csld/phonon/prn_get_gdisp.py
 csld/phonon/setk01.f
 csld/phonon/setk02.f
 csld/phonon/setk03.f

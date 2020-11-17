@@ -8,26 +8,19 @@ matplotlib.use('Agg')
 from matplotlib.backends.backend_pdf import PdfPages
 from configparser import ConfigParser
 import atexit
-<<<<<<< HEAD
 import logging
 import shutil
 import copy 
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 
 import csld.config as config
 from csld.symmetry_structure import SymmetrizedStructure
 from csld.lattice_dynamics import init_ld_model
 #from csld.polaron_force import PolaronFF
 from csld.common_main import *
-<<<<<<< HEAD
 from csld.phonon.prn_get_gdisp import get_displacement
 from gruneisen import gruneisen
 
 from csld.csld_main_functions import save_pot, predict, phonon_step, fit_data, anharmonic, renormalization
-=======
-from csld.csld_main_functions import save_pot, predict, phonon_step, fit_data
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 
 
 def print_logo():
@@ -63,11 +56,7 @@ def init_cmdline_settingfile():
     add_common_parameter(parser)
     options = parser.parse_args()
     config.debug_level = options.log_level
-<<<<<<< HEAD
 #    logging.basicConfig(level=options.log_level)
-=======
-    #logging.basicConfig(level=options.log_level)
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     if options.log_level > 0:
         print_logo()
         print_version(config.VERSION)
@@ -112,19 +101,15 @@ if __name__ == '__main__':
                           options.symC_step, options.ldff_step)
     print(dir(prim))
     Amat, fval = init_training(model, settings['training'], options.train_step)
-<<<<<<< HEAD
-    ibest, solutions = fit_data(model, Amat, fval, settings['fitting'], options.fit_step, pdfout)
+    ibest, solutions, rel_err = fit_data(model, Amat, fval, settings['fitting'], options.fit_step, pdfout)
     print('SOLUTION TYPE : ', type(solutions))
     print('SOLUTION[ibest] DIM : ', solutions[ibest].shape)
     print('SOLUTION[ibest] : \n', solutions[ibest])
     if settings.has_section('phonon'):
         phonon, kpts_line, thermal_dat = phonon_step(model,prim,solutions,settings['phonon'],0,options.phonon_step,pdfout)
         print(phonon)
-=======
-    ibest, solutions, rel_err = fit_data(model, Amat, fval, settings['fitting'], options.fit_step, pdfout)
     if settings.has_section('phonon'):
         phonon = phonon_step(model, solutions, settings['phonon'], options.phonon_step, pdfout, prim)
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     if settings.has_section('export_potential'):
         save_pot(model, solutions[ibest], settings['export_potential'], options.save_pot_step, phonon)
     if settings.has_section('anharmonic') and os.path.exists('FORCE_CONSTANTS_3RD') and options.save_pot_step == 0 and options.fit_step == 1:

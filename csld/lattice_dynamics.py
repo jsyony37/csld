@@ -684,11 +684,7 @@ class LDModel(BasicLatticeModel):
         with open(fc_name, 'w') as modified: modified.write("%d\n"%(icount2) + fp.getvalue())
         fp.close()
 
-<<<<<<< HEAD
-        
-=======
 
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     def load_solution(self, sol_f, potential_coords_ijkl=True):
         """
         sol_f: file_name_of_solution [order_to_keep]

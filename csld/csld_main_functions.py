@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/usr/bin/env python3
 
 import sys
@@ -24,7 +23,7 @@ from cssolve.csfit import csfit, predict_holdout
 from csld.common_main import *
 from csld.phonon.prn_get_gdisp import get_displacement
 from gruneisen import gruneisen
-=======
+
 import re
 import logging
 import glob
@@ -35,7 +34,7 @@ from csld.structure import SupercellStructure
 from csld.phonon.phonon import Phonon, NA_correction
 from cssolve.csfit import csfit, predict_holdout
 from csld.common_main import init_training
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
+
 
 def fit_data(model, Amat, fval, setting, step, pdfout):
     """
@@ -49,7 +48,6 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
     :return: optimal solution
     """
     if step <= 0:
-<<<<<<< HEAD
        exit(0)
     print('\n')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -57,10 +55,6 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('\n')
     if step == 1:
-=======
-        exit(0)
-    elif step == 1:
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
         solutions = model.load_solution(setting['solution_in'],setting.getboolean('potential_coords_ijkl',False))
         if Amat is not None:
             err = [np.std(Amat.dot(solutions[i])-fval[:,0]) for i in range(solutions.shape[0])]
@@ -72,30 +66,19 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
                 exit(-1)
             if solutions.shape[0] > 1:
                 logging.warning("More than 1 solutions found. Returning the first.")
-<<<<<<< HEAD
-=======
         rel_err = 0
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     elif step in [2, 3]:
         mulist = list(map(float, setting['mulist'].split()))
         submodels = [y.split() for x, y in setting.items() if re.match('submodel.*', x) is not None]
         submodels = [[x[0], list(map(int, x[1:]))] for x in submodels]
-<<<<<<< HEAD
         print('submodels : ', submodels)
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
         uscale_list = list(map(float, setting['uscale_list'].split()))
         ldffscale_list = list(map(float, setting.get('ldffscale_list', '1').split()))
         knownsol = setting.get('solution_known', '')
         submodels = model.get_submodels(submodels, uscale_list, setting.getfloat('lr_pair_penalty',0.0),
                    ldffscale_list = ldffscale_list, knownsol=knownsol)
-<<<<<<< HEAD
 	
-        ibest, solutions = csfit(Amat, fval[:,0], 1, mulist,
-=======
-
         ibest, solutions, rel_err = csfit(Amat, fval[:,0], 1, mulist,
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 method=int(setting['method']),
                 maxIter=int(setting['maxiter']),
                 tol=float(setting['tolerance']),
@@ -120,11 +103,7 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
     if model.ldff is not None:
         model.ldff.plot_pairPES(solutions)
     print("+ Fitting done. Best solution", ibest)
-<<<<<<< HEAD
-    return ibest, solutions
-=======
     return ibest, solutions, rel_err
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 
 
 def save_pot(model, sol, setting, step, phonon):
@@ -136,14 +115,11 @@ def save_pot(model, sol, setting, step, phonon):
     """
     if step == 0:
         return
-<<<<<<< HEAD
     print('\n')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('!!!!! SAVING FC AND POTENTIALS !!!!!!')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('\n')
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     scs = [y.split() for x, y in setting.items() if re.match(r'save_pot_cell.*', x)]
     combine= setting.getboolean('combine_improper', True)
     for i in scs:
@@ -151,12 +127,8 @@ def save_pot(model, sol, setting, step, phonon):
         model.save_fct(sol, i[0], cell, combine_improper=combine)
     if len(scs)>0:
         print("  + FCT saved to %d supercell(s)" % (len(scs)))
-<<<<<<< HEAD
-    # export_shengbte should be removed to disable (default), or "Nx Ny Nz 2 3 4 separated by space)" 
-=======
 
     # export_shengbte should be removed to disable (default), or "Nx Ny Nz 2 3 4 separated by space)"
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     if 'export_shengbte' in setting.keys():
         numbers= list(map(int, setting['export_shengbte'].split()))
         orders = numbers[3:]
@@ -165,24 +137,17 @@ def save_pot(model, sol, setting, step, phonon):
             if ord == 2:
             # note solution sol should already have been passed to phonon
                 sc = SupercellStructure.from_scmat(model.prim, np.diag(numbers[:3]))
-<<<<<<< HEAD
-                print('Dim before export_hessian : ', phonon.dim)
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 if use_old:
                     phonon.export_hessian_forshengbte_original(sc)
                 else:
                     phonon.export_hessian_forshengbte(sc)
-<<<<<<< HEAD
                 print('Dim after export_hessian : ', phonon.dim)
             elif ord in [3,4]:
                 if use_old:
                     model.save_fcshengbte(sol, ord)
-=======
             elif ord in [3,4]:
                 if use_old:
                     model.save_fcshengbte_original(sol, ord)
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 else:
                     model.save_fcshengbte(sol, ord)
             else:
@@ -207,15 +172,12 @@ def predict(model, sols, setting, step):
         print("ERROR: Unknown pred_step: ", step)
         exit(-1)
 
-<<<<<<< HEAD
     print('\n')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('!!!!! PREDICTING USING FITTED RESULTS !!!!!!')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('\n')
-    
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
+
     errs = []
     for i in range(len(sols)):
         err = predict_holdout(Amat, fval[:, 0], sols[i])
@@ -236,7 +198,6 @@ def predict(model, sols, setting, step):
     print("+ Prediction done")
     return np.argmin(errs)
 
-<<<<<<< HEAD
 
 def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
     """
@@ -363,24 +324,15 @@ def phonon_step(model, prim, sols, setting, temp, step, pdfout):
     """
     :param model:
     :param prim
-=======
-def phonon_step(model, sols, setting, step, pdfout, prim, return_eigen=False):
-    """
-    :param model:
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
-    :param sol:
     :param setting:
     :param step:
     :return:
     """
     if step <= 0:
         return
-<<<<<<< HEAD
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('!!!!! STARTING PHONON ANALYSIS !!!!!')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-=======
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
     # set up NAC
     entries = [k for k, v in setting.items()]
     nac = NA_correction.from_dict(setting)
@@ -392,34 +344,21 @@ def phonon_step(model, sols, setting, step, pdfout, prim, return_eigen=False):
             cart=setting.getboolean("qpoint_cart")
             # logging.info('assuming '+('cartesian' if cart else 'fractional' )+' input q-points')
             # dispersion
-<<<<<<< HEAD
             if 'wavevector' in entries:
 #                kpts = 'Auto' if setting['wavevector']=='Auto' else str2arr(setting['wavevector'], shape=(-1, 3))
                 kpts = setting['wavevector']
                 eigE, kpts_line = phonon.get_dispersion(kpts, unit=unit, cart=cart, no_gamma=setting.getboolean("no_gamma",True))
-=======
-            eigE = None
-            if 'wavevector' in entries:
-#                kpts = 'Auto' if setting['wavevector']=='Auto' else str2arr(setting['wavevector'], shape=(-1, 3))
-                kpts = setting['wavevector']
-                eigE = phonon.get_dispersion(kpts, unit=unit, cart=cart, no_gamma=setting.getboolean("no_gamma",True))
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 print('  + phonon dispersion generated')
             if 'eigen_wavevector' in entries:
                 kpts = str2arr(setting['eigen_wavevector']).reshape((-1,3))
                 phonon.get_eig_e_vec(kpts, unit=unit, cart=cart)
-<<<<<<< HEAD
                 print('  + eigenvectors exported')
-=======
-                print('  + eigen vectors exported')
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
             if 'dos_grid' in entries:
                 ngrid = str2arr(setting['dos_grid'], int)
                 ismear = setting.getint('ismear', -1)
                 epsilon= setting.getfloat('epsilon')
                 # logging.info('    DOS ismear=%d smearing width=%f' %(ismear, epsilon))
                 pdos = setting.getboolean('pdos', False)
-<<<<<<< HEAD
                 dos=phonon.get_dos(ngrid, int(setting['nE_dos']), ismear, epsilon, temp, unit=unit, pdos=pdos, no_gamma=setting.getboolean("no_gamma",True))
                 print('  + phonon DOS%s generated'% (' + partial DOS' if pdos else ''))
                 if 'thermal_t_range' in entries:
@@ -430,15 +369,6 @@ def phonon_step(model, sols, setting, step, pdfout, prim, return_eigen=False):
                         t_rng = temp
                     thermal_dat = Phonon.calc_thermal_QHA(dos, t_rng, setting['thermal_out'])
                     print('  + harmonic phonon thermal properties calculated')
-=======
-                dos=phonon.get_dos(ngrid, int(setting['nE_dos']), ismear, epsilon, unit=unit, pdos=pdos,no_gamma=setting.getboolean("no_gamma",True))
-                print('  + phonon DOS%s generated'% (' + partial DOS' if pdos else ''))
-                if 'thermal_t_range' in entries:
-                    t_rng = str2arr(setting['thermal_t_range'])
-                    t_rng = np.arange(*(t_rng.tolist()))
-                    Phonon.calc_thermal_QHA(dos, t_rng, setting.get('thermal_out','QHA.out'))
-                    print('  + phonon thermal properties calculated')
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
 
             if 'debye_t_qfrac' in entries:
                 d_T_grid=list(map(int,setting.get('debye_t_v_intgrid','20 20').split()))
@@ -469,11 +399,7 @@ def phonon_step(model, sols, setting, step, pdfout, prim, return_eigen=False):
                 if 'covariance_matrix_t' in entries:
                     np.savetxt('covariance_matrix.out', phonon.covariance_matrix_in_supercell(sc, float(setting['covariance_matrix_t'])))
                 # NOTE: moved invocation of this function to [export_potential] export_shengbte=...
-<<<<<<< HEAD
-                # if bool(setting.getboolean('fc2shengbte',False)):
-=======
                 #if bool(setting.getboolean('fc2shengbte',False)):
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
                 #    phonon.export_hessian_forshengbte(sc)
                 #    print('   simplified force constants for shengbte exported')
 
@@ -482,7 +408,7 @@ def phonon_step(model, sols, setting, step, pdfout, prim, return_eigen=False):
         exit(-1)
 
     print("+ Phonon done")
-<<<<<<< HEAD
+
     return phonon, kpts_line, thermal_dat
 
 
@@ -574,9 +500,3 @@ def anharmonic(prim, phonon, kpts_line, thermal_dat, settings):
     print('  + Linear thermal expansion fraction int(CTE*T*dT) : \n', dLfrac)
 
     return cte, dLfrac
-=======
-    if eigE is not None and return_eigen is True:
-        return phonon, eigE
-    else:
-        return phonon
->>>>>>> 3f046389356ff180b06a4ef7578e4bbf9b148f7a
