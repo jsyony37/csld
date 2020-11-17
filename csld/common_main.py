@@ -151,7 +151,7 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
         submodels = [[x[0], ' '.join(x[1:])] for x in submodels]
         knownsol = setting.get('solution_known', '')
         submodels = model.get_submodels(submodels, setting=setting, knownsol=knownsol)
-
+        
         ibest, solutions = csfit(Amat, fval[:,0], 1, mulist,
                 method=int(setting['method']),
                 maxIter=int(setting['maxiter']),

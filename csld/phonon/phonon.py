@@ -141,7 +141,6 @@ class Phonon():
         def _get_greek(ls):
             return ["$" + l + "$" if l.startswith("\\") or l.find("_") != -1 else l for l in ls]
 
-
         uniq_d = []
         uniq_l = []
         temp_ticks = list(map(list,zip(dist, _get_greek(lbl))))
@@ -183,12 +182,12 @@ class Phonon():
 #                        logger.debug("Adding a line at {d}"
 #                                     " for label {l}".format(
 #                            d=ticks['distance'][i], l=ticks['label'][i]))
-                        plt.axvline(dist[i], color='g')
+                        plt.axvline(dist[i], color='gray', linestyle='--')
                 else:
 #                    logger.debug("Adding a line at {d} for label {l}".format(
 #                            d=ticks['distance'][i], l=ticks['label'][i]))
-                    plt.axvline(dist[i], color='g')
-        plt.axhline(0, color='0.7')
+                    plt.axvline(dist[i], color='gray', linestyle='--')
+        plt.axhline(0, color='black')
         with open('wavevec_label.txt', 'w') as f:
             f.write(''.join([x[1]+'\n' for x in temp_ticks]))
         return plt
@@ -269,6 +268,7 @@ class Phonon():
         for i in range(1, len(kpts)):
             xval[i] = xval[i-1] + (0 if labels[i-1] and labels[i] else np.linalg.norm(kpts[i:i+1] - kpts[i-1:i]))
         eigE = f_phonon.get_dispersion(kpts, 1, self.dim)* self.units[unit][0]
+        print(np.min(eigE),np.max(eigE))
         np.savetxt('phonon-dispersion.out', np.hstack((np.array([xval]).T, eigE.T)), header=
           'col1: wavevector distance;  col 2 ...: band 1 ...: '+self.units[unit][1])
         if False:
@@ -283,14 +283,14 @@ class Phonon():
                                      [[xval, ref_eigE[i,:], 'r-'] for i in range(self.dim)]))
             else:
                 plt.plot(*my_flatten([[xval, eigE[i,:], 'b-'] for i in range(self.dim)]))
-            plt.xlabel("wave vector")
+            plt.xlabel("Wavevector")
             plt.ylabel(self.units[unit][1])
             #print(xval, labels)
             Phonon._maketicks(xval, labels, plt)
             plt.savefig(self.pdfout, format='pdf')
             plt.close()
 
-        return eigE
+        return eigE, kpts
 
 
     def get_eig_e_vec(self, k_in,unit='THz', cart=True):
@@ -301,11 +301,11 @@ class Phonon():
         """
         from scipy.io import mmwrite
         eigE, eigV = f_phonon.get_eig_e_vec(self.to_c(k_in, cart), self.dim)
-        dm = f_phonon.get_dm(self.to_c(k_in, cart), self.dim)
-        np.savetxt("eigE.txt", eigE)
-        for i in range(len(k_in)):
-            mmwrite("eigV_%d.mtx"%(i), eigV[:,:,i])
-            mmwrite("dm_%d.mtx"%(i), dm[:,:,i])
+#        dm = f_phonon.get_dm(self.to_c(k_in, cart), self.dim)
+#        np.savetxt("eigE.txt", eigE)
+#        for i in range(len(k_in)):
+#            mmwrite("eigV_%d.mtx"%(i), eigV[:,:,i])
+#            mmwrite("dm_%d.mtx"%(i), dm[:,:,i])
         # np.savetxt("hessian.txt", self.get_FCM())
         return (eigE, eigV)
 
@@ -321,7 +321,7 @@ class Phonon():
             plt.close()
 
 
-    def get_dos(self, mesh, nEdos, ismear, epsilon, unit='THz', pdos=False, no_gamma=False):
+    def get_dos(self, mesh, nEdos, ismear, temp, epsilon, unit='THz', pdos=False, no_gamma=False):
         """
 
         :param mesh: [nx ny nz]
@@ -341,13 +341,13 @@ class Phonon():
         # returned dos always in eV per primitive cell (3 N_atom modes)
         dos[:,0] *= self.units['eV'][0]
         dos[:,1] /= self.units['eV'][0]
-        np.savetxt('phonon-total-dos.out', dos, header='col1: energy in eV;  col 2: DOS')
+        np.savetxt('phonon-total-dos'+str(temp)+'.out', dos, header='col1: energy in eV;  col 2: DOS')
 
         if pdos:
             for i in range(self.prim.num_sites):
                 self.plot_dos(plt, en, pd[i]/self.units[unit][0], "Partial for atom %d"%(i+1), self.units[unit][1])
             pd /= self.units['eV'][0]
-            np.savetxt('phonon-partial-dos.out', np.hstack((dos[:,0:1], pd.T))
+            np.savetxt('phonon-partial-dos'+str(temp)+'.out', np.hstack((dos[:,0:1], pd.T))
                        , header='col1: energy in eV;  col 2: atom 1 DOE, etc')
 
         return dos
@@ -362,6 +362,7 @@ class Phonon():
         :return:
         """
         dat = f_phonon.calc_thermal(dos, Tlist)
+        np.nan_to_num(dat,copy=False,nan=0.0,posinf=0,neginf=0)
         np.savetxt(outf, dat, header='QHA Per primitive cell: T (K);  E (eV);  A=E-TS (eV);  S (kB);  Cv (kB)')
         return dat
 
@@ -441,25 +442,51 @@ class Phonon():
             mass= np.sqrt(sc.atomic_masses).repeat(3)
             return self.get_dm_supercell(sc)*np.outer(mass, mass)
 
+
     def export_hessian_forshengbte(self, sc):
         from csld.util.tool import matrix2text
         na= self.prim.num_sites
         Nsc = sc.n_cell
         hmat = self.get_hessian(sc, True)
         hmat = hmat.reshape((na,Nsc,3,na,Nsc,3))
-        #with open('FORCE_CONSTANTS_2short', 'w') as f:
-        #    for ia1 in range(na):
-        #        for ia2 in range(na):
-        #            for l,ls in enumerate(sc.ijk_ref):
-        #                f.write("%d %d %d %d %d %s\n"%(ia1+1,ls[0]+1,ls[1]+1,ls[2]+1,ia2+1,matrix2text(hmat[ia1,0,:,ia2,l,:].reshape(-1))))
-        # new compact format
         with open('FORCE_CONSTANTS_2ND', 'w') as f:
             f.write("%d %d\n"%(na, na*Nsc))
             index=np.arange(na*Nsc).reshape((na,*(np.diag(sc.sc_mat)[::-1])))
+            print(index)
+            for scindex in range(Nsc):
+                for ia1 in range(na):
+                    for ia2 in range(na):
+                        for l,ls in enumerate(sc.ijk_ref):
+                            f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,scindex,:,ia2,l,:])))
+                            
+        
+    # for original (unmodified) version of ShengBTE         
+    def export_hessian_forshengbte_original(self, sc):
+        from csld.util.tool import matrix2text
+        na= self.prim.num_sites
+        Nsc = sc.n_cell
+        hmat = self.get_hessian(sc, True)
+        hmat = hmat.reshape((na,Nsc,3,na,Nsc,3))
+        hmat = np.round(hmat,10)
+        with open('FORCE_CONSTANTS_2ND', 'w') as f:
+            f.write("%d \n"%(na*Nsc))
+            index=np.arange(na*Nsc).reshape((na,*(np.diag(sc.sc_mat)[::-1])))
+            print('SUPERCELL INDEX')
+            print(index)
+            print('SUPERCELL INDEX')
+            print('sc.ijk_ref old : \n',sc.ijk_ref)
+            sort_idx = np.lexsort([sc.ijk_ref[:,0], sc.ijk_ref[:,1], sc.ijk_ref[:,2]])
+            sc.ijk_ref = sc.ijk_ref[sort_idx]
+            print('sc.ijk_ref rearranged: \n',sc.ijk_ref)
             for ia1 in range(na):
-                for ia2 in range(na):
-                    for l,ls in enumerate(sc.ijk_ref):
-                        f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,0,:,ia2,l,:])))
+                for scindex in range(Nsc):
+                    scorder = sort_idx[scindex]
+                    for ia2 in range(na):
+                        for l,ls in zip(sort_idx,sc.ijk_ref):
+                            if scindex == 0 and ia1 == 0 and ia2 == 0:
+                                print("l = ",l," ls =",ls)
+                            f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,scorder,:,ia2,l,:])))
+#                            f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[0],ls[1],ls[2]]+1,matrix2text(hmat[ia1,scindex,:,ia2,l,:])))
 
 
     def covariance_matrix_in_supercell(self, sc, T):

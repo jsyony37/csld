@@ -153,16 +153,20 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
     """
     # print("Amat", Amat.__class__)
     nVal, nCorr = Amat.shape
+    print('Amat Dimensions : ', nVal, ' ', nCorr)
     wtlist = np.ones(nVal) if wt==1 else wt
     holdsize= int(round(nVal*holdsize)) if isinstance(holdsize, float) else holdsize
     holdsize= max(0,min(nVal, holdsize))
+    print('Holdsize : ',holdsize)
     holdout= sorted(np.random.choice(nVal, holdsize, replace=False))
     subsetsize= int(round(nVal*subsetsize)) if isinstance(subsetsize, float) else min(nVal-holdsize, subsetsize)
-    alltrain = list(set(range(nVal))-set(holdout))
+    print('Subsetsize : ',subsetsize)
+    alltrain = list(set(range(nVal))-set(holdout)) # set aside holdout for testing
     cvsize= nVal-holdsize-subsetsize
     print("  No. of data points: all=%d  holdout=%d  cross-v=%d  train=%d"%(nVal, holdsize, cvsize, subsetsize))
 
-    #print(submodels)
+    print('SUBMODELS')
+    print(submodels)
     if submodels is None:
         submodels = [['All', scipy.sparse.identity(nCorr), np.zeros(nCorr)]]
     if nSubset<=1:
@@ -173,11 +177,12 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
 
     sol_all = []
     rms_all = []
-    inRMS= RMS(flist_in)
+    inRMS= RMS(flist_in) # RMSE of training forces
     # use theC to select only some parameters for fitting, give weight to parameters, etc
     for model_name, theC, sol0_in in submodels:
         print("  considering", model_name, " nvar=", theC.shape[1])
         sol0 = np.ones(nCorr) * sol0_in  # in case sol0_in == 0
+        print('sol0 dimensions :', len(sol0))
         flist0 = Amat.dot(sol0)
         flist = flist_in - flist0
         modelErr= get_errors(flist_in, flist0)
@@ -191,6 +196,17 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
         if method==101:
             # BCS, so mu is not needed
             mulist=[0]
+
+        part = int(np.floor(subsetsize/nSubset))
+        tset = list()
+        cvset = list()
+        ts_short = alltrain[:]
+        for hi in range(nSubset):
+            cv1 = sorted(np.random.choice(ts_short, part, replace=False)) # randomly choose training eqs
+            cvset.append(cv1)
+            ts1 = [x for x in alltrain if x not in cv1 ]
+            tset.append(ts1)
+            ts_short = [x for x in ts_short if x not in cv1 ]
         for mu in mulist:
             # Bayesian CS
             if method == 101:
@@ -214,16 +230,19 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
                 sols = []
                 cv_errs = []
                 for itrain in range(nSubset):
-                    ts1= sorted(np.random.choice(alltrain, subsetsize, replace=False))
-                    cv1=[x for x in alltrain if x not in ts1]
+#                    ts1= sorted(np.random.choice(alltrain, subsetsize, replace=False)) # randomly choose training eqs
+#                    cv1=[x for x in alltrain if x not in ts1] # the rest is used for cross validation
+                    
                     if method == 201:
                         # Tikhonov Regularization or ridge regression, |Ax-b|^2 + mu x^2
                         sol= tikhonov_reg(AC[ts1], flist[ts1], mu*subsetsize)
                     else:
-                        sol = bregman_func(AC[ts1], flist[ts1], method, mu, lbd=lbd,
-                                           maxIter=maxIter, tol=tol)
+                        # Split-Bregman for L1 regression (LASSO), |Ax-b|^2 + mu |x|
+#                        sol = bregman_func(AC[ts1], flist[ts1], method, mu, lbd=lbd, maxIter=maxIter, tol=tol)
+                        sol = bregman_func(AC[tset[itrain]], flist[tset[itrain]], method, mu, lbd=lbd, maxIter=maxIter, tol=tol) 
                     sols.append(sol)
-                    cv_errs.append(get_errors(flist[cv1], AC[cv1].dot(sol))[1])
+                    cv_errs.append(get_errors(flist[cvset[itrain]], AC[cvset[itrain]].dot(sol))[1])
+                    print('cv_errs : ',cv_errs[-1])
                 #errs.extend([get_errors(flist[holdout], AC[holdout].dot(sol)) for sol in sols])
                 #holdout_rel_abs_err = np.mean(errs, axis=0)
                 sols = np.array(sols)
@@ -246,8 +265,8 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
             print("    mu= %.3g rel_err= %5.2f %%  err= %9.5f err_cv= %9.5f L0= %d L1= %8.3f"%tuple(fit_mu[:6]))
             np.savetxt(open('solution_ALL','ab'), (theC.dot(sol)+sol0)[None,:])
 
+        ### FIND THE BEST SOLUTION OUT OF MULTIPLE TRIALS ###
         bestsol = min(fit_model, key=lambda x: x[2])
-        # print('debug bestsol=', bestsol)
         i_mu= fit_model.index(bestsol)
         sol_all.append(theC.dot(bestsol[-2]) + sol0)
         rms_all.append(bestsol[2])
@@ -256,6 +275,7 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
         for i, s in enumerate(fit_model):
             print("%8.2g %7.2f  %7.4g  %7.4g  %6d   %7g   %7g" % tuple(s[:6]+[L1norm(theC.dot(s[-2]))]), '  \033[92m<==BEST\033[0m' if i==i_mu else '')
 
+        ### GENERATE PLOTS ###
         if plt is not None:
             def writepdf():
                 if pdfout is not None:

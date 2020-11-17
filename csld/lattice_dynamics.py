@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3get_coo
 
 """
   Lattice dynamics model
@@ -232,6 +232,24 @@ class LDModel(BasicLatticeModel):
     @property
     def ncorr(self): return self.nfct + (0 if self.ldff is None else self.ldff.ncorr)
 
+    def get_params(self):
+        all_ord=list(set([o.cluster.order for o in self.orbits]))
+        ldff = self.ldff
+        if ldff is None:
+            ld_diag = np.arange(0)
+            ld_scalelist = [1]
+            maxfitord = self.maxorder
+        else:
+            ld_diag = np.ones(ldff.ncorr)
+            ld_scalelist = ldffscale_list
+            maxfitord = self.maxorder+1
+            all_ord+=[maxfitord]
+            self.ord_range[maxfitord] = self.ord_range[self.maxorder] + ldff.ncorr
+        param = dict()
+        for o in range(maxfitord+1):
+            param[o]=self.ord_range[o]-self.ord_range[o-1]
+        return param
+    
     def get_submodels(self, name_ord, u_list, lr_pair_penalty=0, ldffscale_list=[1], knownsol=None):
         """
         :param name_ord: list of [name, fct order]
@@ -258,8 +276,9 @@ class LDModel(BasicLatticeModel):
              input_sol = self.load_solution(knownsol).reshape(-1)
              sol0[:min(sol0.size, input_sol.size)] = input_sol[:min(sol0.size, input_sol.size)]
 
-        print("No. of parameters", {o: self.ord_range[o]-self.ord_range[o-1]
-                                              for o in range(maxfitord+1)})
+        param = dict()
+        for o in range(maxfitord+1):
+            param[o]=self.ord_range[o]-self.ord_range[o-1]
         name_ord = self.process_name_ord(name_ord, all_ord)
 
         pair_r0 = np.min([orb.cluster.diameter for orb in self.orbits if orb.cluster.order==2 and orb.cluster.order_uniq==2])
@@ -359,6 +378,9 @@ class LDModel(BasicLatticeModel):
                 if debug_level > 2:
                     print("    config",rundir, " weight=", weight, " max |dx|=", np.amax(norm(dx,axis=1)))
                 dx_sort = dx
+                print('dx_sort : ',type(dx_sort),dx_sort.shape)
+                print('clusALL : ',type(clusALL),len(clusALL))
+                print('theC : ',type(theC),theC.shape)
                 Amat= self.calc_correlation(dx_sort, clusALL).dot(theC)
 
                 if ldff is not None:
@@ -388,7 +410,7 @@ class LDModel(BasicLatticeModel):
                             values-= np.mean(values, axis=0)
                         valuesFit = values.copy() - f0
                     else:
-                        print("WARNING: force.txt not found in %s ... setting to zero"%(rundir))
+                        print("WARNING: force.txt not found in %s ... setting to zero ... OK for renormalization"%(rundir))
                         values = np.zeros((len(dx), 3))
                         valuesFit = values.copy()
                     assert values.shape == dx.shape, 'force [%d %d] coords [%d %d]' % (values.shape[0], values.shape[1], dx.shape[0], dx.shape[1])
@@ -544,6 +566,7 @@ class LDModel(BasicLatticeModel):
         import io, re
         sol_fct = self.get_full_fct(sol)
         ops = self.prim.spacegroup
+        print("WRITING FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord]))
         fc_name="FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord])
         fp=io.StringIO()
         icount=0
@@ -555,11 +578,12 @@ class LDModel(BasicLatticeModel):
             val = sol_fct[self.orb_idx_full[iO]:self.orb_idx_full[iO+1]]
             if np.amax(np.abs(val)) <= tol:
                 continue
+            perms = clus0.permutations()
             for ic, clus in enumerate(orb.clusters):
                 ijkls = clus._ijkls_np
                 valTrans = fct_trans_c(npt, 3, ops[orb.clusters_ig[ic]].rot, np.arange(npt, dtype=int)).dot(val).reshape((3,)*ord)
-#                print('debug iorb, ic iper', iO, ic, len(perms))
-                for iper in clus0.permutations():
+                #print('debug iorb, ic iper', iO, ic, len(perms), clus)
+                for iper in perms:
                     icount+=1
                     #print('debug', icount, clus0.ijkls, iO, ic)
                     ijk_other= matrix2text(self.prim.lattice.get_cartesian_coords(ijkls[iper[1:],:3]- ijkls[iper[0:1],:3]))
@@ -569,6 +593,92 @@ class LDModel(BasicLatticeModel):
         with open(fc_name, 'w') as modified: modified.write("%d\n"%(icount) + fp.getvalue())
         fp.close()
 
+
+    # for original (unmodified) version of ShengBTE
+    def save_fcshengbte_original(self, sol, ord, tol=1e-20, output_ijkl=True):
+        from .util.tool_for_original_shengbte import LPTClusterEquivalentByTranslation, relativePosition, FCTrans, ListFlat
+        assert ord in (3,4), "Only order 3 or 4 FCTs are accepted by shengbte, got %d"%(ord)
+        import io, re
+        import os.path
+        from f_util import f_util
+#        uscale = u_list[0]
+        np.savetxt('sol',sol)
+#        print('SOL : ',len(sol),'\n',sol)
+        sol_fct = self.get_full_fct(sol) # expend independent FCT over the null space (isotropy group, translational invariance)
+#        print('SOL_FCT : ',len(sol_fct),'\n',sol_fct)
+        np.savetxt('sol_fct',sol_fct)
+        ops = self.prim.spacegroup
+#        scinfo = SupercellStructure.from_scmat(self.prim, scmat)
+#        flag_dp = np.zeros((scinfo.num_sites, scinfo.num_sites),dtype=np.int)
+        fc_name="FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord])
+        fp=io.StringIO()
+        fp2=io.StringIO()
+        icount=0
+        icount2=0
+
+        #######################################################################################
+        ### Apply triplet selection - JP modeled after Yi's codes phononFCT.py and tools.py ###
+        #######################################################################################
+
+        R = self.prim.lattice.matrix
+        rmat = np.array(R).tolist()
+        print('rmat : \n',rmat)
+        apos = self.prim.frac_coords
+        poscar = np.array(apos).tolist()
+        print('poscar : \n',poscar)
+        natom = len(apos)
+        print('natom : ',natom)
+        cutoff = 6
+        nlat = 2
+        # normally requires 5 parameters, but calling using f2py relieves the need for 5th natom
+        f_util.select_triplet(poscar, rmat, cutoff, nlat)
+        #-----------------------------------------------------------
+        lines=[list(map(int, line.split())) for line in open('triplet-selection','r')]
+        selclus=[ [ [[0,0,0],line1[3]],[[line1[4],line1[5],line1[6]],line1[7]],[[line1[8],line1[9],line1[10]],line1[11]] ] for line1 in lines ]
+        counter=0
+        icount2=0
+        fctsym=[]
+        for clus in selclus: # loop over all selected triplet clusters (could be in any cell)
+            print('CLUS : \n',clus)
+            counter=counter+1
+            npt=len(clus) # 2 for pair, 3 for triplets, etc.
+            foundOrb=False
+            for iO, orb in enumerate(self.orbits): # loop over all orbits
+                clus0 = orb.cluster
+                npt = clus0.order
+                if npt != ord:
+                    continue
+                #val = sol_fct[self.orb_idx_full[iO]:self.orb_idx_full[iO+1]]/(pow(uscale, npt-1))
+                for ic2, clus2 in enumerate(orb.clusters): # loop over all clusters in the orbits
+                    tmp = list(clus2.vertices)
+                    clustry = [[[tmp[0].ijkl[0],tmp[0].ijkl[1],tmp[0].ijkl[2]],tmp[0].ijkl[3]],[[tmp[1].ijkl[0],tmp[1].ijkl[1],tmp[1].ijkl[2]],tmp[1].ijkl[3]],[[tmp[2].ijkl[0],tmp[2].ijkl[1],tmp[2].ijkl[2]],tmp[2].ijkl[3]]]
+                    foundOrb = LPTClusterEquivalentByTranslation(clustry, clus, True) # check if this cluster is the translated version of selclus
+                    if foundOrb != False: # if match found
+                        print('Cluster Matched! \n',clustry)
+                        print('SOL_FCT INDICES : ',self.orb_idx_full[iO],self.orb_idx_full[iO+1])
+                        print('foundOrb : ',foundOrb)
+                        val = sol_fct[self.orb_idx_full[iO]:self.orb_idx_full[iO+1]] # load full FCT for a cluster   
+                        print('Distinct FCT : \n',val)
+                        fctsym.append(ListFlat(list(val)))
+                        icount2+=1
+                        valTrans2 = np.array(FCTrans(npt, 3, ops[orb.clusters_ig[ic2]].rot, relativePosition(clustry, foundOrb))).dot(val)
+                        print('Transformed FCT : \n',valTrans2,'\n')
+                        # get lattice coordinates of the 2 other cells by zero-referencing to the 1st cell
+                        #ijk_other= matrix2text(self.prim.lattice.get_cartesian_coords(clus._ijkls_np[1:,:3] - clus._ijkls_np[0:1,:3]))
+                        difference = np.array([np.array(clus[1][0]) - np.array(clus[0][0]),np.array(clus[2][0]) - np.array(clus[0][0])])
+                        #print(difference)
+                        ijk_other= matrix2text(self.prim.lattice.get_cartesian_coords(difference))
+                        #print('ijk_other : \n',ijk_other)
+                        #fp.write("\n%d\n%s\n%s\n"%(icount2, ijk_other, matrix2text(clus._ijkls_np[:,3]+1)))
+                        fp.write("\n%d\n%s\n%s\n"%(icount2, ijk_other, matrix2text(np.array([clus[0][1],clus[1][1],clus[2][1]])+1)))
+                        fp.write(re.sub(r".*\n", r"",LDModel.fct2str(npt, valTrans2, -1),count=1)+'\n')
+                        break
+        
+        np.savetxt('fctsym',fctsym)
+        with open(fc_name, 'w') as modified: modified.write("%d\n"%(icount2) + fp.getvalue())
+        fp.close()
+
+        
     def load_solution(self, sol_f, potential_coords_ijkl=True):
         """
         sol_f: file_name_of_solution [order_to_keep]
@@ -831,7 +941,7 @@ def init_ld_model(prim, setting, setting_ldff, clus_step, symC_step, ldff_step, 
         model = LDModel.from_file(prim, setting['cluster_in'], **spec)
     elif clus_step in [2, 3]:
         model = LDModel.generate_clusters(prim, **spec)
-        model.cleanup()
+#        model.cleanup()
         if clus_step == 3:
             model.save_clusters(setting['cluster_out'])
     else:
@@ -839,7 +949,7 @@ def init_ld_model(prim, setting, setting_ldff, clus_step, symC_step, ldff_step, 
         exit(-1)
     print("+ Obtained %d proper clusters" %(len(model.clusters)), model.tally())
     model.generate_improper()
-    model.cleanup()
+#    model.cleanup()
     model.get_orbit_isotropy()
     model.prepare_index_full()
 
