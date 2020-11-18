@@ -467,17 +467,14 @@ class Phonon():
         Nsc = sc.n_cell
         hmat = self.get_hessian(sc, True)
         hmat = hmat.reshape((na,Nsc,3,na,Nsc,3))
-        hmat = np.round(hmat,10)
+#        hmat = np.round(hmat,10)
         with open('FORCE_CONSTANTS_2ND', 'w') as f:
             f.write("%d \n"%(na*Nsc))
             index=np.arange(na*Nsc).reshape((na,*(np.diag(sc.sc_mat)[::-1])))
-            print('SUPERCELL INDEX')
-            print(index)
-            print('SUPERCELL INDEX')
-            print('sc.ijk_ref old : \n',sc.ijk_ref)
+#            print('sc.ijk_ref old : \n',sc.ijk_ref)
             sort_idx = np.lexsort([sc.ijk_ref[:,0], sc.ijk_ref[:,1], sc.ijk_ref[:,2]])
             sc.ijk_ref = sc.ijk_ref[sort_idx]
-            print('sc.ijk_ref rearranged: \n',sc.ijk_ref)
+#            print('sc.ijk_ref rearranged: \n',sc.ijk_ref)
             for ia1 in range(na):
                 for scindex in range(Nsc):
                     scorder = sort_idx[scindex]
@@ -487,24 +484,6 @@ class Phonon():
                                 print("l = ",l," ls =",ls)
                             f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,scorder,:,ia2,l,:])))
 #                            f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[0],ls[1],ls[2]]+1,matrix2text(hmat[ia1,scindex,:,ia2,l,:])))
-
-
-    # for original (unmodified) version of ShengBTE
-    def export_hessian_forshengbte_original(self, sc):
-        from csld.util.tool import matrix2text
-        na= self.prim.num_sites
-        Nsc = sc.n_cell
-        hmat = self.get_hessian(sc, True)
-        hmat = hmat.reshape((na,Nsc,3,na,Nsc,3))
-        with open('FORCE_CONSTANTS_2ND', 'w') as f:
-            f.write("%d \n"%(na*Nsc))
-            index=np.arange(na*Nsc).reshape((na,*(np.diag(sc.sc_mat)[::-1])))
-            print(index)
-            for scindex in range(Nsc):
-                for ia1 in range(na):
-                    for ia2 in range(na):
-                        for l,ls in enumerate(sc.ijk_ref):
-                            f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,scindex,:,ia2,l,:])))
 
 
     def covariance_matrix_in_supercell(self, sc, T):
