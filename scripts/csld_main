@@ -108,8 +108,6 @@ if __name__ == '__main__':
     if settings.has_section('phonon'):
         phonon, kpts_line, thermal_dat = phonon_step(model,prim,solutions,settings['phonon'],0,options.phonon_step,pdfout)
         print(phonon)
-    if settings.has_section('phonon'):
-        phonon = phonon_step(model, solutions, settings['phonon'], options.phonon_step, pdfout, prim)
     if settings.has_section('export_potential'):
         save_pot(model, solutions[ibest], settings['export_potential'], options.save_pot_step, phonon)
     if settings.has_section('anharmonic') and os.path.exists('FORCE_CONSTANTS_3RD') and options.save_pot_step == 0 and options.fit_step == 1:
