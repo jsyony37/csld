@@ -4,6 +4,7 @@
   Lattice dynamics model
 """
 
+import h5py
 import os
 from itertools import product
 import numpy as np
@@ -574,6 +575,7 @@ class LDModel(BasicLatticeModel):
         ops = self.prim.spacegroup
         print("WRITING FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord]))
         fc_name="FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord])
+        hf_name="fc%s.hdf5"%({3:"3RD",4:"4TH"}[ord])
         fp=io.StringIO()
         icount=0
         for iO, orb in enumerate(self.orbits):

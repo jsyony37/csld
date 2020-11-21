@@ -22,7 +22,7 @@ from csld.phonon.phonon import Phonon, NA_correction
 from cssolve.csfit import csfit, predict_holdout
 from csld.common_main import *
 from csld.phonon.prn_get_gdisp import get_displacement
-from gruneisen import gruneisen
+from csld.phonon.gruneisen import gruneisen
 
 import re
 import logging
@@ -421,18 +421,22 @@ def anharmonic(prim, phonon, kpts_line, thermal_dat, settings):
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     # Grueneisen parameter
     ngrid = str2arr(settings['phonon']['dos_grid'], int)
-    kpts_unif = np.mgrid[0:1:1./ngrid[0], 0:1:1./ngrid[1], 0:1:1./ngrid[2]].transpose((1,2,3,0)).reshape(-1,3)
-#    kpts_unif, wt = prim.syminfo.get_ir_reciprocal_mesh(ngrid)
-#    print('kpts_unif : ',type(kpts_unif),kpts_unif.shape,'\n',kpts_unif)
-#    kpts_unif_cart = kpts_unif.dot(prim.lattice.reciprocal_lattice.matrix)
-    kpts_unif_cart = prim.reciprocal_lattice.get_cartesian_coords(kpts_unif)
-    kpts_line_cart = prim.reciprocal_lattice.get_cartesian_coords(kpts_line)
-    np.savetxt('kpts_unif',kpts_unif)
-    np.savetxt('kpts_unif_cart',kpts_unif_cart)
+    kgrid_unif = np.mgrid[0:1:1./ngrid[0], 0:1:1./ngrid[1], 0:1:1./ngrid[2]].transpose((1,2,3,0)).reshape(-1,3)
+#    kgrid_unif, wt = prim.syminfo.get_ir_reciprocal_mesh(ngrid)
+#    print('kgrid_unif : ',type(kgrid_unif),kgrid_unif.shape,'\n',kgrid_unif)
+#    kgrid_unif_cart = kgrid_unif.dot(prim.lattice.reciprocal_lattice.matrix)
+    kgrid_unif_cart = prim.reciprocal_lattice.get_cartesian_coords(kgrid_unif)
+    np.savetxt('kgrid_unif',kgrid_unif)
+    np.savetxt('kgrid_unif_cart',kgrid_unif_cart)
+    kpts_line_cart = np.around(kpts_line,4)
+#    kpts_line = prim.reciprocal_lattice.get_fractional_coords(kpts_line_cart)
+#    kgrid_line = np.transpose(np.linalg.inv(np.transpose(prim.lattice.reciprocal_lattice.matrix)).dot(np.transpose(kpts_line)))
+#    np.savetxt('kpts_line',kpts_line)
+#    print('kpts_line : ',type(kpts_line),kpts_line.shape,'\n',kpts_line)
     np.savetxt('kpts_line',kpts_line)
     np.savetxt('kpts_line_cart',kpts_line_cart)
     print("Diagonalizing for eigenvalues and eigenvectors on uniform mesh...")
-    eigE, eigV = phonon.get_eig_e_vec(kpts_unif, unit='THz', cart=False)
+    eigE, eigV = phonon.get_eig_e_vec(kgrid_unif, unit='THz', cart=False)
     eigE = np.transpose(eigE)
     eigE_line, eigV_line = phonon.get_eig_e_vec(kpts_line, unit='THz', cart=False)
     eigE_line = np.transpose(eigE_line)
@@ -442,60 +446,17 @@ def anharmonic(prim, phonon, kpts_line, thermal_dat, settings):
     np.savetxt("eigE_line.txt", eigE_line,delimiter='  ')
     np.savetxt('eigV-Gamma.txt',np.real(eigV[0,:,:]).round(4),delimiter='  ',fmt='%.5f')
     print('  + eigenvalues and eigenvectors obtained')
-    try:
-        fc3 = open('FORCE_CONSTANTS_3RD','r')
-    except:
-        print("+ No FORCE_CONSTANTS_3RD")
-        return 0, 0
-    Ntri = int(fc3.readline())
-    lattvec = np.transpose(prim.lattice.matrix)
-    print('Lattice Vectors :\n',lattvec)
-    Phi,R_j,R_k,Index_i,Index_j,Index_k = gruneisen.read3fc(lattvec,Ntri)
-    print('  + FORCE_CONSTANTS_3RD read ')
-    masses = np.asarray(prim.atomic_masses)
-    Index_i = np.transpose(Index_i.astype(int))
-    Index_j = np.transpose(Index_j.astype(int))
-    Index_k = np.transpose(Index_k.astype(int))
-    cart_coord = np.transpose(prim.cart_coords)
-#    rlattvec = np.transpose(prim.lattice.reciprocal_lattice.matrix)
-#    print('Rlattvec : ',type(rlattvec),rlattvec.shape,'\n',rlattvec)  
-    print('Cartesian Coord. : ',type(cart_coord),cart_coord.shape,'\n',cart_coord)#
-    print('Eigenvalues at Gamma : ',type(eigE),eigE.shape,'\n',eigE[0,:])
-    print('Eigenvectors at Gamma : ',type(eigV),eigV.shape,'\n',eigV[0,:,:])
-    print('masses : ',type(masses),masses.shape,'\n',masses)
-    print('Index_i : ',type(Index_i),Index_i.shape)
-    print('R_j : ',type(R_j),R_j.shape,R_j)
-    print('kpts_unif : \n',kpts_unif_cart)
-    # omega must be multiplied by 2pi to be converted to rad*THz (angular frequency)  
-    grun = gruneisen.mode_grun(eigE*2*np.pi,eigV,Phi,R_j,R_k,Index_i,Index_j,Index_k,cart_coord,masses,kpts_unif_cart)#,rlattvec)
-    np.savetxt('gruneisen_mode.txt',grun)
-    t_rng = str2arr(settings['phonon']['thermal_t_range']).astype(int)
-    t_rng = range(t_rng[0],t_rng[1],t_rng[2])
-    total_grun = np.zeros(len(t_rng))
-    for tt in range(len(t_rng)):
-        total_grun[tt] = gruneisen.total_grun(eigE*2*np.pi,grun,t_rng[tt])
+
+    # Gruneisen and Thermal expansion 
+    bulk_mod = float(settings['anharmonic']['bulk_mod'])*10**9 # GPa to SI
+#    vol = prim.lattice.volume/10**30 # A^3 to SI    
+    Cv = thermal_dat[:,4]*1.3806/10**23 # unit conversion to SI
+    temperatures = thermal_dat[:,0]
+    dim = list(map(int, settings['export_potential']['export_shengbte'].split()))[:3]
+    total_grun, cte, dLfrac = gruneisen(settings['structure']['prim'],settings['structure']['sym_tol'],dim,ngrid,temperatures,Cv,bulk_mod,prim.lattice.volume)
     total_grun = np.nan_to_num(total_grun)
     print('  + The total Gruneisen parameter : \n', total_grun)
     np.savetxt('gruneisen_total.txt',total_grun)
-    grun_line = gruneisen.mode_grun(eigE_line*2*np.pi,eigV_line,Phi,R_j,R_k,Index_i,Index_j,Index_k,cart_coord,masses,kpts_line_cart)#,rlattvec)
-    np.savetxt('gruneisen_mode_line.txt',grun_line)
-
-    # Thermal expansion (need bulk modulus input)
-    bulk_mod = float(settings['anharmonic']['bulk_mod'])*10**9 # GPa to SI
-    vol = prim.lattice.volume/10**30 # A^3 to SI
-    Cv = thermal_dat[:,4]*1.3806/10**23 # unit conversion to SI 
-    intCv = np.zeros(len(t_rng))
-    for tt in range(len(t_rng)):
-        temp_max = thermal_dat[tt,0]
-        if temp_max == 0:
-            intCv[tt] = 0
-        else:
-            intCv[tt] = np.trapz(Cv[range(tt)],thermal_dat[range(tt),0]) # integrate for cumulative Cv up to temp_max
-    print('  + Heat capacity (J/K) : \n', Cv)
-    cte = np.asarray(list(zip(t_rng,Cv*total_grun/vol/bulk_mod/3)))
-    dLfrac = np.asarray(list(zip(t_rng,intCv*total_grun/vol/bulk_mod/3)))
-    cte = np.nan_to_num(cte)
-    dLfrac = np.nan_to_num(dLfrac)
     print('  + Coefficient of linear thermal expansion ( /K) : \n', cte)
     print('  + Linear thermal expansion fraction int(CTE*T*dT) : \n', dLfrac)
 

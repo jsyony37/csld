@@ -96,7 +96,8 @@ if __name__ == '__main__':
     logger.setLevel(level=options.log_level)
     pdfout = PdfPages(options.pdfout.strip()) if options.pdfout.strip() else None
     atexit.register(upon_exit, pdfout)
-    prim = SymmetrizedStructure.init_structure(settings['structure'], options.symm_step, options.symm_prim, options.log_level)
+    primitive = settings['structure']['prim']
+    prim = SymmetrizedStructure.init_structure(settings['structure'], primitive, options.symm_step, options.symm_prim, options.log_level)
     model = init_ld_model(prim, settings['model'], settings['LDFF'] if 'LDFF' in settings.sections() else {}, options.clus_step,
                           options.symC_step, options.ldff_step)
     print(dir(prim))

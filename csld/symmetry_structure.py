@@ -286,7 +286,7 @@ class SymmetrizedStructure(Structure):
         return True
 
     @staticmethod
-    def init_structure(setting, step, symm_prim, debug_level=0, in_cell=True, read_CE=True, check_prim=2):
+    def init_structure(setting, primitive, step, symm_prim, debug_level=0, in_cell=True, read_CE=True, check_prim=2):
         """
 
         :param setting:
@@ -302,7 +302,8 @@ class SymmetrizedStructure(Structure):
         from csld.interface_vasp import Poscar
         from csld.util.string_utils import setting2arr
 
-        pos = Poscar.from_file(setting['prim'], read_CE=read_CE)
+#        pos = Poscar.from_file(setting['prim'], read_CE=read_CE)
+        pos = Poscar.from_file(primitive, read_CE=read_CE)
         struc = pos.structure
         symprec = float(setting.get('sym_tol', '1e-5'))
         for isite, site in enumerate(struc.sites):

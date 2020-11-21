@@ -89,6 +89,8 @@ contains
     print *, omega(1,:)
     print *, "EIGENVECTOR at GAMMA:"
     write(*, '(18F0.4)') real(eigenvect(1,:,:))
+    print *, 'FIRST KPT : '
+    print *, kspace(1,:)
     open(1, file = 'KSPACE', status = 'replace')
     write(1, '(3F0.4)') transpose(kspace)
     close(1)    

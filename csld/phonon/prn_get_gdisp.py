@@ -154,14 +154,14 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
         print("******Check evc normalization: "+str(dot(matevc[:,0], matevc[:,0])))
     else:
         poscar=read_poscar_cart(path+"SPOSCAR",masslist)  # mass for each species
-    print("POSCAR----------------------------------------------------------")
-    for item in poscar:
-        print("------"+str(item))
-        print(str(poscar[item]))
-    print("******Number of atoms: "+str(poscar['natom']))
+#    print("POSCAR----------------------------------------------------------")
+#    for item in poscar:
+#        print("------"+str(item))
+#        print(str(poscar[item]))
+#    print("******Number of atoms: "+str(poscar['natom']))
 
     #read IFC
-    print("IFC-------------------------------------------------------------")
+#    print("IFC-------------------------------------------------------------")
     ifc=get_ifc(path+"FORCE_CONSTANTS_2ND")
     #print ifc[0:3,3:6]
 
@@ -207,12 +207,12 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
 
     #temperature = raw_input("Please enter one of temps: 300 400 500 600 620 700 800 3800: ")
     #temperature = 2000 # in K
-    print("Atomic mass for supercell: ")
-    print(poscar['mas'])
+#    print("Atomic mass for supercell: ")
+#    print(poscar['mas'])
 #    head.write1dmat(poscar['mas'], path+"masses")
     ###interface to fortran routine
     #os.system("./get_matcov-"+str(temperature))
-    fengdiff = get_matcov.pmatcov(temperature, poscar['mas'], path)
+    free_energy = get_matcov.pmatcov(temperature, poscar['mas'], path)
 #    get_matcov.pmatcov(temperature, masslist, path) 
     matcov=head.read2dmat(path+"matcov.dat")
 #    print("Eigenvalues of covariance matrix: ")
@@ -220,8 +220,8 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
     Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
     head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")   
     latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']])# * poscar['scaling']
-    print("Lattice vector: ")
-    print(latvec)
+#    print("Lattice vector: ")
+#    print(latvec)
     #random seed to ensure the randoming sampling are same
 #    random.seed(90001)
 #    random.seed(100901)
@@ -242,7 +242,7 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
         raise ValueError("numprocess should be natural number")
     print("Time for generating displacements: "+str(time.time()-stime)+"\n")
 
-    return fengdiff
+    return free_energy
 
 
 #make sure path exist

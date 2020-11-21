@@ -13,17 +13,18 @@ contains
 !       ifort -o get_matcov-2000 get_matcov.f90 -mkl
 !       f2py  -lmkl_rt -c -m get_matcov  get_matcov.f90
 !----------------------------------------------
-subroutine  pmatcov(temperature,path)
+subroutine pmatcov(temperature,mass,path,feng)
 implicit none
 
 ! define parameters----------------------------
 integer natom, i, j, ia, ib, ndim, l, ifreq, ifreq0, ja, jb
-real*8  nphonon, temperature, freqtmp, feng, ratio
+real*8  nphonon, temperature, mass(:), freqtmp, ratio
+real*8, intent(out) :: feng
 character(len=100) :: path
 real*8, dimension(:,:), allocatable :: ifcs, ifcs2
 real*8, dimension(:,:), allocatable :: dyn, dyn2
 real*8, dimension(:,:), allocatable :: matcov
-real*8, dimension(:), allocatable :: mass, eig, freq, eig2, freq2
+real*8, dimension(:), allocatable :: eig, freq, eig2, freq2
 
 complex(kind=8), allocatable :: work(:)
 real(kind=8), allocatable :: rwork(:) 
@@ -38,15 +39,14 @@ integer(kind=4) :: nwork=1, info=0
 
 open(10, file=trim(path)//'FORCE_CONSTANTS_2ND', status='old', form='formatted')
 read(10, *) natom
-print *, "Number of atoms: "
-print *, natom
+!print *, "Number of atoms: "
+!print *, natom
 ndim=3*natom
 allocate(rwork(max(1,9*natom-2)))
 allocate(work(nwork))
 allocate(ifcs(3*natom, 3*natom), ifcs2(3*natom, 3*natom))
 allocate(dyn(3*natom, 3*natom), dyn2(3*natom, 3*natom))
 allocate(matcov(3*natom, 3*natom))
-allocate(mass(natom))
 allocate(eig(3*natom), eig2(3*natom))
 allocate(freq(3*natom), freq2(3*natom))
 do i=1, natom
@@ -59,7 +59,7 @@ do i=1, natom
 end do
 close(10)
 
-open(11, file=trim(path)//'FORCE_CONSTANTS_CSLD_2ND', status='old', form='formatted')
+open(11, file=trim(path)//'FORCE_CONSTANTS_2ND_OLD', status='old', form='formatted')
 read(11, *) natom
 do i=1, natom
    do j=1, natom
@@ -71,13 +71,13 @@ do i=1, natom
 end do
 close(11)
 
-open(10, file=trim(path)//'masses', status='old', form='formatted')
-do i=1, natom
-   read(10, *) mass(i)
-end do
-close(10)
-print *, "Atomic Masses: "
-print *, mass(:)
+!open(10, file=trim(path)//'masses', status='old', form='formatted')
+!do i=1, natom
+!   read(10, *) mass(i)
+!end do
+!close(10)
+!print *, "Atomic Masses: "
+!print *, mass(:)
 
 
 ! processing----------------------------------
@@ -163,15 +163,15 @@ do i=1, 3*natom
 end do
 call bubblesort(ndim, freq, indexfreq)
 call bubblesort(ndim, freq2, indexfreq2)
-print *, "1. Sorted Frequencies (THz): "
-print '(8f12.8)', freq(:)
-print *, "1. Index reference: "
-print '(12i6)', indexfreq(:)
+!print *, "1. Sorted Frequencies (THz): "
+!print '(8f12.8)', freq(:)
+!print *, "1. Index reference: "
+!print '(12i6)', indexfreq(:)
 
-print *, "2. Sorted Frequencies (THz): "
-print '(8f12.8)', freq2(:)
-print *, "2. Index reference: "
-print '(12i6)', indexfreq2(:)
+!print *, "2. Sorted Frequencies (THz): "
+!print '(8f12.8)', freq2(:)
+!print *, "2. Index reference: "
+!print '(12i6)', indexfreq2(:)
 
 ! construct correlation matrix
 feng=0.d0
@@ -185,17 +185,16 @@ do ifreq0=1, ndim
       !feng=feng+0.5*freqtmp*4.13567-( 0.086173*log(1.0-exp(-1*ratio))+0.086173*ratio/(exp(ratio)-1.0) )*temperature
       feng=feng+0.5*freqtmp*4.13567+0.086173*temperature*log(1.0-exp(-1.0*ratio))  ! in meV
    end if
-   print '("Index of freq: ", i6)', ifreq0
-   print '("Original freq: ", f12.8)', freqtmp
+!   print '("Index of freq: ", i6)', ifreq0
+!   print '("Original freq: ", f12.8)', freqtmp
    if (freqtmp < 1.0d-3) then
       freqtmp=100000.0
-      print *, "Change frequency to very large values 100000 THZ"
-      print *, freqtmp
+!      print *, "Change frequency to very large values 100000 THZ"
+!      print *, freqtmp
    end if
    !print '("Phonon freq: ", f12.8)', freqtmp
    nphonon=(1.0+2.0/(exp(47.9924*freqtmp/temperature)-1.0))
-   print '( "Number of phonons: ", f12.6)', nphonon
-   print *
+!   print '( "Number of phonons: ", f12.6)', nphonon
    do ia=1, natom
       do ib=1, natom
          do ja=1, 3

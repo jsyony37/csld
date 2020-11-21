@@ -344,6 +344,9 @@ SUBROUTINE SplitBregman(MaxIt, tol, mu, lambda, N, M, A, f, u)
 
      crit1 = SQRT(dot_product(u-uprev,u-uprev)/dot_product(u,u))
      crit2 = SQRT(dot_product(u-d,u-d)/dot_product(u,u))
+     if (isnan(crit1) .or. isnan(crit2)) then
+        exit
+     end if
      if (mod(k, 5)==1) then
        print '(a,i3,2(a,f10.6))', ' SplitBregman: it=', k, ', |dU|/|U| = ', crit1, ', |d-U|/|U| = ', crit2
      end if
