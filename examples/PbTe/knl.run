@@ -1,0 +1,14 @@
+#!/bin/bash -l
+#SBATCH -J PbTe
+#SBATCH -q regular
+#SBATCH -C knl,quad,cache
+#SBATCH -N 4
+#SBATCH -t 0:40:00
+
+module load vasp/20170629-knl
+
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+export OMP_NUM_THREADS=8
+
+srun -n 32 -c 32 --cpu_bind=cores vasp_std > stdout

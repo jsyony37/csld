@@ -1,0 +1,20 @@
+#!/bin/bash
+
+dirname="training-pbesol"
+mkdir $dirname
+cd $dirname ; echo -e "5 0 0\n 0 5 0\n 0 0 5" > sc.txt
+
+polaron_main --task supercell --p1 sc.txt --prim ../POSCAR-prim-pbesol > SPOSCAR
+
+for r in 2 
+do
+for i in 0.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09 0.1 0.15 0.2
+do
+#    polaron_main --task rand_disp_dir -R $i --p1 SPOSCAR -N 1
+#    mv dir_00000-disp$i dir_0000$r-disp$i
+    cp ../INCAR ../KPOINTS ../POTCAR ../knl.run dir_0000$r-disp$i
+    cd dir_0000$r-disp$i
+    sbatch knl.run
+    cd ..
+done
+done

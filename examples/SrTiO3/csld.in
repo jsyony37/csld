@@ -1,0 +1,129 @@
+[structure]
+prim = POSCAR-prim-pbesol
+sym_tol = 1E-3
+## Either text file containing 3x3 matrix, or 9 numbers for the same matrix
+epsilon_inf = 6.705872     0.000000     0.000000       0.000000     6.705872     0.000000       0.000000    -0.000000     6.705872
+### Either text file containing n_atom matrices, or n_atom*9 numbers for the same matrices
+born_charge =   2.52527    -0.00000     0.00000    0.00000     2.52527    -0.00000     0.00000     0.00000     2.52528   7.75515     0.00000     0.00000      0.00000     7.75515    -0.00000       0.00000    -0.00000     7.75514       -2.03977     0.00000     0.00000        0.00000    -6.20087     0.0000          0.00000     0.00000    -2.03977        -2.03977     0.00000    -0.00000       -0.00000    -2.03977     0.00000        0.00000     0.00000    -6.20088       -6.20087     0.00000    -0.00000        0.00000    -2.03977     0.00000       -0.00000     0.00000    -2.03977
+
+
+#######################################################################
+[model]
+model_type = LD
+cluster_in = clusters.out
+cluster_out = clusters.out
+symC_in = Cmat.mtx
+symC_out = Cmat.mtx
+max_order = 4
+fractional_distance = False
+cluster_diameter = 8 5 3
+#cluster_diameter = 6.5 4 3
+## Be VERY careful with these! Do not change unless you understand it. Bond distance cutoff is adjustable
+cluster_filter = lambda cls: ((cls.order_uniq<=2) or (cls.bond_counts(2.9) >=2)) and cls.is_small_in('training4-pbesol/sc.txt')
+
+[training]
+interface = VASP
+corr_type = f
+corr_in = Amat.mtx
+corr_out = Amat.mtx
+fval_in = fval.txt
+fval_out = fval.txt
+traindat1 = training4-pbesol/SPOSCAR training4-pbesol/dir*
+
+
+#######################################################################
+[fitting]
+#solution_known = solution_3rd
+solution_in = solution_all
+solution_out = solution_all
+nsubset = 5
+holdsize = 0.2
+subsetsize = 0.75
+## 1 FPC 2 FPC sparse 3 split 4 sparse split
+## 5 split+ right preconditioning 6 sparse split + r preconditioning
+## 101 Bayesian CS
+method = 5
+
+# For weight of L1 or L2 regularization
+mulist = 1E-1 1E-2 1E-5 1E-7
+maxIter = 300
+tolerance = 1E-6
+lambda = 0.5
+uscale_list = 0.03
+
+#submodel1 = uptothird 1 2 3
+#submodel0 = harmonic 1 2
+#submodel1 = anharmonic 3 4
+#submodel1 = fourth 4
+submodel1 = all 1 2 3 4
+
+[phonon]
+##  -1 (disabled,default), 0 (dipole)
+nac= 0
+
+## dispersion
+qpoint_fractional = False
+# 'Auto' or something like "[[10,  [0,0,0],'\\Gamma', [0.5,0.5,0.5], 'X', [0.5,0.5,0], 'K']]"
+#wavevector = [[25,  [0,0,0],'\Gamma', [0,0.5,0.5], 'X'], [25, [1,0.5,0.5], 'X', [0.75,0.375,0.375], 'K', [0,0,0], '\Gamma', [0.5, 0.5, 0.5], 'L']]
+wavevector = Auto
+## THz, meV, eV, cm
+unit = meV
+
+## num. of grid points, 3 integers
+dos_grid = 20 20 20
+## Num. of points in DOS
+nE_dos = 500
+## 0 (Gaussian), 1 (Lorentzian), -1 (tetrahedron method)
+ismear= -1
+## width in THz of Gaussian/Lorentzian smearing
+epsilon = 0.05
+pdos = True
+
+
+## debye velocity averaging
+#debye_t_qfrac = 0.03
+#debye_t_v_intgrid = 40 40
+
+## quasi-harmonic thermal properties (requires dos_grid)
+## Temperature in K: begin end increment
+thermal_T_range = 0 800 50
+thermal_out = thermal_out.txt
+
+## export structures to supercells
+#supercell = 2 0 0    0 2 0    0 0 2
+## temperature in K: start, end, increment
+#snapshot_T_range = 100 800 100
+## list of [kp1, kp2, kp3, index_band]
+#modes = 0.125 0.125 0.25 0   0.125 0.125 0.25 1  0.125 0.125 0.25 2
+## amplitude in Angstrom
+#mode_amplitude = 0 0.03
+
+
+[export_potential]
+#save_pot_cell0 = fcc333  -3 3 3   3 -3 3     3 3 -3
+#save_pot_cell1 = prim111 1 0 0   0 1 0    0 0 1 
+#combine_improper = false
+## first 3 integers for size of supercell for which Hessian/2nd order FCs are exported, then order of FCs
+export_shengbte = 4 4 4 2 3 4
+original_shengbte_format = True
+
+
+[anharmonic]
+bulk_mod = 173
+
+[renormalization]
+temperature = 50 100 150 200 250 300
+conv_thresh = 0.01
+mix_old = 0
+nconfig = 200
+nprocess = 1
+
+
+[prediction]
+interface = VASP
+corr_type = f
+corr_in = Amat_pred.mtx
+corr_out = Amat_pred.mtx
+fval_in = fval_pred.txt
+fval_out = fval_pred.txt
+traindat0 = fcc222/POSCAR fcc222/traj*
