@@ -442,7 +442,6 @@ class Phonon():
             mass= np.sqrt(sc.atomic_masses).repeat(3)
             return self.get_dm_supercell(sc)*np.outer(mass, mass)
 
-
     def export_hessian_forshengbte(self, sc):
         from csld.util.tool import matrix2text
         na= self.prim.num_sites

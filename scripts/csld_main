@@ -113,7 +113,7 @@ if __name__ == '__main__':
         save_pot(model, solutions[ibest], settings['export_potential'], options.save_pot_step, phonon)
     if settings.has_section('anharmonic') and os.path.exists('FORCE_CONSTANTS_3RD') and options.save_pot_step == 0 and options.fit_step == 1:
         cte, dLfrac = anharmonic(prim,phonon,kpts_line,thermal_dat,settings)
-        thermalized_training_set(settings, solutions[ibest], 300, 0)
+        thermalized_training_set(settings, prim.atomic_masses, 300, 0)
     if settings.has_section('renormalization') and options.renorm :
         temperature = settings['renormalization']['temperature'].split()
         for temp in temperature :

@@ -25,6 +25,7 @@ character(len=100) :: path
 real*8, dimension(:,:), allocatable :: ifcs, ifcs2
 real*8, dimension(:,:), allocatable :: dyn, dyn2
 real*8, dimension(:), allocatable :: eig, freq, eig2, freq2
+logical :: file_exists
 
 complex(kind=8), allocatable :: work(:)
 real(kind=8), allocatable :: rwork(:) 
@@ -59,7 +60,13 @@ do i=1, natom
 end do
 close(10)
 
-open(11, file=trim(path)//'FORCE_CONSTANTS_2ND_OLD', status='old', form='formatted')
+
+INQUIRE(FILE="FORCE_CONSTANTS_2ND_OLD", EXIST=file_exists)
+if (file_exists) then
+   open(11, file=trim(path)//'FORCE_CONSTANTS_2ND_OLD', status='old', form='formatted')
+else
+   open(11, file=trim(path)//'FORCE_CONSTANTS_2ND', status='old', form='formatted')
+end if
 read(11, *) natom
 do i=1, natom
    do j=1, natom

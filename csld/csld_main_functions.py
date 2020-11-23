@@ -199,7 +199,7 @@ def predict(model, sols, setting, step):
     return np.argmin(errs)
 
 
-def thermalized_training_set(settings, temp, masses, dLfrac):
+def thermalized_training_set(settings, masses, temp, dLfrac):
     path = './training-'+str(temp)+'K/'
     primitive = settings['structure']['prim']
     nconfig = int(settings['renormalization']['nconfig'])
@@ -224,7 +224,9 @@ def thermalized_training_set(settings, temp, masses, dLfrac):
         #lines[1] = str(float(lines[1])*(1+dLfrac))+' \n'
     with open(path+'SPOSCAR','w') as ff:
         ff.writelines(lines)
-        
+    fcfile = 'FORCE_CONSTANTS_2ND'
+    shutil.copy(fcfile,path+fcfile)
+    
     qcv_displace(masses,temp,nconfig,path,nprocess)
     print('+ Thermalized training sets generated!')
 
@@ -276,7 +278,6 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     fcfile = 'FORCE_CONSTANTS_2ND'
     shutil.copy(fcfile,fcfile+'_ORG')
     shutil.copy(fcfile+'_ORG',path+fcfile)
-    shutil.copy(fcfile+'_ORG',path+fcfile+'_OLD')
 
     prim = SymmetrizedStructure.init_structure(settings['structure'], primitive+str(temp)+'K', options.symm_step, options.symm_prim, options.log_level)
     model = init_ld_model(prim, settings['model'], settings['LDFF'] if 'LDFF' in settings.sections() else {}, options.clus_step,
@@ -341,7 +342,7 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
         shutil.copy(fcfile,path+fcfile)
 
         # BREAK if relative difference in Free Energy is small
-        if d_free_energy < abs(conv_thresh) and count > 1:
+        if abs(d_free_energy) < conv_thresh and count > 1:
             print('!!!!! Convergence Reached - Renormalization Done for ',str(temp),' K !!!!!')
             break
 
@@ -520,7 +521,7 @@ def anharmonic(prim, phonon, kpts_line, thermal_dat, settings):
         if temp_max == 0:
             intCv[tt] = 0
         else:
-            intCv[tt] = np.trapz(Cv[range(tt)],thermal_dat[range(tt),0]) # integrate for cumulative Cv up to temp_max
+            intCv[tt] = np.trapz(Cv[range(tt+1)],thermal_dat[range(tt+1),0]) # integrate for cumulative Cv up to temp_max
     print('  + Heat capacity (J/K) : \n', Cv)
     cte = np.asarray(list(zip(t_rng,Cv*total_grun/vol/bulk_mod/3)))
     dLfrac = np.asarray(list(zip(t_rng,intCv*total_grun/vol/bulk_mod/3)))

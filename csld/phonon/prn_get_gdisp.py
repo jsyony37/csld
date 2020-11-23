@@ -48,6 +48,7 @@ def get_dig(poscar,ifc):
 
 
 def read_poscar(file,massall): #assuming SPOSCAR
+    print(massall)
     fin=None
     fin=open(file, 'r')
     tmp=fin.readlines() #ftmp
