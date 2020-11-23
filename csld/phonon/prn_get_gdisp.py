@@ -19,14 +19,12 @@ def mkdir(dir):
         os.system(str("mkdir"+" "+dir))
 
 
-
 def get_ifc(file):
     fin=None
     fin=open(file,'r')
     fifc=fin.readlines()
     fin.close()
-    natom=int(fifc[0])
-    
+    natom=int(fifc[0])    
     ifc=array([[0.0 for i in range(3*natom)] for j in range(3*natom)])
     for i in range(natom):
         for j in range(natom):
@@ -49,7 +47,7 @@ def get_dig(poscar,ifc):
     return solution
 
 
-def read_poscar_cart(file,massall): #assuming SPOSCAR
+def read_poscar(file,massall): #assuming SPOSCAR
     fin=None
     fin=open(file, 'r')
     tmp=fin.readlines() #ftmp
@@ -66,7 +64,7 @@ def read_poscar_cart(file,massall): #assuming SPOSCAR
     poscar['species']=tmp[5].split()
     poscar['specount']=list(map(int, tmp[6].split()))
     poscar['natom']=sum(poscar['specount'])
-    poscar['coordiante']=tmp[7]
+    poscar['coordinate']=tmp[7]
     for ia in range(poscar['natom']):
         poscar['cor'].append(array( list(map(float, (tmp[8+ia].split())[0:3] )) ))
     for ise in range(len(poscar['specount'])):
@@ -101,7 +99,7 @@ def write_poscar_direct(file, poscar, carposdis):
     dataout+=" ".join(map(str,poscar['vec2']))+"\n"
     dataout+=" ".join(map(str,poscar['vec3']))+"\n"
     #PRN uses no species
-    #dataout+=" ".join(map(str,poscar['species']))+"\n"
+    dataout+=" ".join(map(str,poscar['species']))+"\n"
     dataout+=" ".join(map(str,poscar['specount']))+"\n"
     dataout+="Direct"+"\n"
     for pos in carposdis:
@@ -144,7 +142,7 @@ def dispWrap(dispAll,Lmatcov,natom,poscar,path,iconf):
 #    write_zero_forces(path+"disp-"+str(iconf+1)+"/force.txt", poscar, dirpos)
     
 #-----------------------------------------------------------------------
-def get_displacement(masslist,temperature,nconfig,path,numprocess):
+def qcv_displace(masslist,temperature,nconfig,path,numprocess):
     #read POSCAR
     readPOSCAR=0
     if readPOSCAR > 1:
@@ -153,7 +151,7 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
         matevc=tmp[-1]
         print("******Check evc normalization: "+str(dot(matevc[:,0], matevc[:,0])))
     else:
-        poscar=read_poscar_cart(path+"SPOSCAR",masslist)  # mass for each species
+        poscar=read_poscar(path+"SPOSCAR",masslist)  # mass for each species
 #    print("POSCAR----------------------------------------------------------")
 #    for item in poscar:
 #        print("------"+str(item))
@@ -193,33 +191,25 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
 #    print("******Sorted frequencies (THz)")
 #    print(sorteig)
 #    print("Eigenvector-----------------------------------------------------")
-#    print("******Check evc normalization: ")
-#    print("******Normalized eigenvectors: ")
-#    print(dot(sortevc[:,0], sortevc[:,0]))
+    print("******Check evc normalization: ")
+    print(dot(sortevc[:,0], sortevc[:,0]))
     head.write1dmat(list(sorteig), path+"frequencies")
     #print type(sortevc[:,0])
 #    print(sortevc[:,0])
-    #construct quantum covariance
+
+    # Construct quantum covariance matrix
     natom=poscar['natom']
+    masses=poscar['mas']
     ndim=3*natom
     print("Number of atoms: "+str(natom))
     matcov=[[ 0.0 for i in range(ndim)] for j in range(ndim)]
-
-    #temperature = raw_input("Please enter one of temps: 300 400 500 600 620 700 800 3800: ")
-    #temperature = 2000 # in K
-#    print("Atomic mass for supercell: ")
-#    print(poscar['mas'])
-#    head.write1dmat(poscar['mas'], path+"masses")
-    ###interface to fortran routine
-    #os.system("./get_matcov-"+str(temperature))
-    free_energy = get_matcov.pmatcov(temperature, poscar['mas'], path)
-#    get_matcov.pmatcov(temperature, masslist, path) 
-    matcov=head.read2dmat(path+"matcov.dat")
+    free_energy, matcov = get_matcov.pmatcov(temperature, natom, masses, path)
+#    matcov=head.read2dmat(path+"matcov.dat")
 #    print("Eigenvalues of covariance matrix: ")
 #    print(eigvalsh(matcov))
     Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
-    head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")   
-    latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']])# * poscar['scaling']
+#    head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")   
+    latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']]) * poscar['scaling']
 #    print("Lattice vector: ")
 #    print(latvec)
     #random seed to ensure the randoming sampling are same
@@ -227,7 +217,7 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
 #    random.seed(100901)
     # pre-generate all random distributions
     mu = 0.0
-    sigma =1.0 # 0.5
+    sigma = 1.0 # 0.5
     dispAll=[random.normal(mu, sigma, ndim) for iconf in range(nconfig)] # Gaussian random sampling
     stime=time.time()
     if numprocess == 1:
@@ -251,11 +241,3 @@ def get_displacement(masslist,temperature,nconfig,path,numprocess):
 #--FORCE_CONSTANT_CSLD and FORCE_CONSTANT_CSLD_OLD could be the same, if not, phonon frequency is the average one
 #--FORCE_CONSTANT_CSLD and FORCE_CONSTANT_CSLD_OLD are all in Phonopy format
 #--POSCAR-org is the supercell in line with FORCE_CONSTANT_CSLD
-
-##### TRIAL RUN #####
-#masslist=[207.2, 127.6] # atomic mass for Pb and Te
-#temperature=300         # temperature 
-#nconfig=10              # number of displacements
-#path="/project/projectdirs/m1047/jsyony37/tools/csld-renorm/TD_Disp3/pbte-images/"   # path
-#numprocess=4            # python multiprocessing
-#get_displacement(masslist,temperature,nconfig,path,numprocess)

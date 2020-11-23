@@ -13,17 +13,17 @@ contains
 !       ifort -o get_matcov-2000 get_matcov.f90 -mkl
 !       f2py  -lmkl_rt -c -m get_matcov  get_matcov.f90
 !----------------------------------------------
-subroutine pmatcov(temperature,mass,path,feng)
+subroutine pmatcov(temperature,natom,mass,path,feng,matcov)
 implicit none
 
 ! define parameters----------------------------
 integer natom, i, j, ia, ib, ndim, l, ifreq, ifreq0, ja, jb
 real*8  nphonon, temperature, mass(:), freqtmp, ratio
+real*8, intent(out) :: matcov(3*natom,3*natom)
 real*8, intent(out) :: feng
 character(len=100) :: path
 real*8, dimension(:,:), allocatable :: ifcs, ifcs2
 real*8, dimension(:,:), allocatable :: dyn, dyn2
-real*8, dimension(:,:), allocatable :: matcov
 real*8, dimension(:), allocatable :: eig, freq, eig2, freq2
 
 complex(kind=8), allocatable :: work(:)
@@ -46,7 +46,7 @@ allocate(rwork(max(1,9*natom-2)))
 allocate(work(nwork))
 allocate(ifcs(3*natom, 3*natom), ifcs2(3*natom, 3*natom))
 allocate(dyn(3*natom, 3*natom), dyn2(3*natom, 3*natom))
-allocate(matcov(3*natom, 3*natom))
+!allocate(matcov(3*natom, 3*natom))
 allocate(eig(3*natom), eig2(3*natom))
 allocate(freq(3*natom), freq2(3*natom))
 do i=1, natom

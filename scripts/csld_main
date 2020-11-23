@@ -17,10 +17,10 @@ from csld.symmetry_structure import SymmetrizedStructure
 from csld.lattice_dynamics import init_ld_model
 #from csld.polaron_force import PolaronFF
 from csld.common_main import *
-from csld.phonon.prn_get_gdisp import get_displacement
+from csld.phonon.prn_get_gdisp import qcv_displace
 from gruneisen import gruneisen
 
-from csld.csld_main_functions import save_pot, predict, phonon_step, fit_data, anharmonic, renormalization
+from csld.csld_main_functions import save_pot, predict, phonon_step, fit_data, anharmonic, thermalized_training_set, renormalization
 
 
 def print_logo():
@@ -113,9 +113,10 @@ if __name__ == '__main__':
         save_pot(model, solutions[ibest], settings['export_potential'], options.save_pot_step, phonon)
     if settings.has_section('anharmonic') and os.path.exists('FORCE_CONSTANTS_3RD') and options.save_pot_step == 0 and options.fit_step == 1:
         cte, dLfrac = anharmonic(prim,phonon,kpts_line,thermal_dat,settings)
+        thermalized_training_set(settings, solutions[ibest], 300, 0)
     if settings.has_section('renormalization') and options.renorm :
         temperature = settings['renormalization']['temperature'].split()
         for temp in temperature :
-            renormalization(model,settings,options,solutions[ibest],temp,dLfrac[np.where(dLfrac[:,0]==float(temp))][0,1],4)
+            renormalization(model,settings,solutions[ibest],options,temp,dLfrac[np.where(dLfrac[:,0]==float(temp))][0,1],4)
     if settings.has_section('prediction'):
         predict(model,solutions,settings['prediction'],options.pred_step)

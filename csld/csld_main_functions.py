@@ -21,7 +21,7 @@ from csld.symmetry_structure import SymmetrizedStructure
 from csld.phonon.phonon import Phonon, NA_correction
 from cssolve.csfit import csfit, predict_holdout
 from csld.common_main import *
-from csld.phonon.prn_get_gdisp import get_displacement
+from csld.phonon.prn_get_gdisp import qcv_displace
 from gruneisen import gruneisen
 
 import re
@@ -199,7 +199,36 @@ def predict(model, sols, setting, step):
     return np.argmin(errs)
 
 
-def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
+def thermalized_training_set(settings, temp, masses, dLfrac):
+    path = './training-'+str(temp)+'K/'
+    primitive = settings['structure']['prim']
+    nconfig = int(settings['renormalization']['nconfig'])
+    nprocess = int(settings['renormalization']['nprocess'])
+
+    try:
+        os.mkdir(path)
+    except:
+        return
+    if os.path.isfile('SPOSCAR'):
+        pass
+    else:
+        raise ValueError('SPOSCAR not found!')
+
+    with open(primitive,'r') as f:
+        lines = f.readlines()
+        #lines[1] = str(float(lines[1])*(1+dLfrac))+' \n'
+    with open(primitive+str(temp)+'K','w') as ff:
+        ff.writelines(lines)
+    with open('SPOSCAR','r') as f:
+        lines = f.readlines()
+        #lines[1] = str(float(lines[1])*(1+dLfrac))+' \n'
+    with open(path+'SPOSCAR','w') as ff:
+        ff.writelines(lines)
+        
+    qcv_displace(masses,temp,nconfig,path,nprocess)
+    print('+ Thermalized training sets generated!')
+
+def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     """
     :param model: The LD model
     :param sol : The optimal solution vector from original fit
@@ -234,10 +263,6 @@ def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
         pass
     else:
         raise ValueError('SPOSCAR not found!')
-    fcfile = 'FORCE_CONSTANTS_2ND'
-    shutil.copy(fcfile,fcfile+'_ORG')
-    shutil.copy(fcfile+'_ORG',path+fcfile)
-    shutil.copy(fcfile+'_ORG',path+fcfile+'_OLD')
     with open(primitive,'r') as f:
         lines = f.readlines()
         #lines[1] = str(float(lines[1])*(1+dLfrac))+' \n'
@@ -248,6 +273,11 @@ def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
         #lines[1] = str(float(lines[1])*(1+dLfrac))+' \n'
     with open(path+'SPOSCAR','w') as ff:
         ff.writelines(lines)
+    fcfile = 'FORCE_CONSTANTS_2ND'
+    shutil.copy(fcfile,fcfile+'_ORG')
+    shutil.copy(fcfile+'_ORG',path+fcfile)
+    shutil.copy(fcfile+'_ORG',path+fcfile+'_OLD')
+
     prim = SymmetrizedStructure.init_structure(settings['structure'], primitive+str(temp)+'K', options.symm_step, options.symm_prim, options.log_level)
     model = init_ld_model(prim, settings['model'], settings['LDFF'] if 'LDFF' in settings.sections() else {}, options.clus_step,
                           options.symC_step, options.ldff_step)
@@ -258,8 +288,8 @@ def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
     while True:
         count += 1
         print('ITERATION ', count)
-        # Diagnonalize IFC and Generate T-dependent atomic displacements (Yi)
-        free_energy = get_displacement(prim.atomic_masses,temp,nconfig,path,nprocess)
+        # Diagnonalize IFC and Generate T-dependent atomic displacements
+        free_energy = qcv_displace(prim.atomic_masses,temp,nconfig,path,nprocess)
         shutil.copy(path+fcfile,path+fcfile+'_OLD')
         # Set-up T-dependent sensing matrix
         Amat_TD, fval_TD = init_training(model, settings['training'], step=2)
@@ -296,9 +326,9 @@ def renormalization(model, settings, options, sol, temp, dLfrac, anh_order):
         print('Renormalized sol_renorm : \n', sol_renorm[start2:start2+param[2]])
         
         # Check relative difference in sol2new
-        d_free_energy = free_energy - free_energy_old
+        d_free_energy = (free_energy - free_energy_old)/free_energy
         rel_chg = np.sum(abs(sol2new-sol2old)/abs(sol2new))/len(sol2new)
-        rel_diff = np.sum(abs(sol2new)/abs(sol_renorm[start2:start2+param[2]]))/len(sol2new)
+        rel_diff = np.sum(abs(sol2new)/abs(sol2orig))/len(sol2new)
         print('Relative change in sol2new from sol2old is ', rel_chg)
         print('Relative difference from original sol2 is ', rel_diff)
         print('Relative change in free energy (meV/atom) is ', d_free_energy)
