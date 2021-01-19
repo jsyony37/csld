@@ -234,9 +234,10 @@ write(33, '(100000E20.10)') matcov(i, :)
 end do
 close(33)
 
+feng = feng/natom
 open(33, file=trim(path)//'free_eng.dat', form='formatted', status='unknown') 
-write(33, *) "Free energy in meV"
-write(33, '(f12.6)') feng/natom
+write(33, *) "Free energy per atom in meV"
+write(33, '(f12.6)') feng
 close(33)
 
 end subroutine

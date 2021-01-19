@@ -63,6 +63,7 @@ csld/phonon/find_Ewald_eta_screened.f
 csld/phonon/gbox.f
 csld/phonon/get_matcov.f90
 csld/phonon/gruneisen.f90
+csld/phonon/gruneisen.py
 csld/phonon/head.py
 csld/phonon/lattc.f
 csld/phonon/pdstet.f

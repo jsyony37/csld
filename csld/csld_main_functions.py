@@ -21,7 +21,7 @@ from csld.symmetry_structure import SymmetrizedStructure
 from csld.phonon.phonon import Phonon, NA_correction
 from cssolve.csfit import csfit, predict_holdout
 from csld.common_main import *
-from csld.phonon.prn_get_gdisp import qcv_displace
+from csld.phonon.prn_get_gdisp import get_qcv, qcv_displace
 from gruneisen import gruneisen
 
 import re
@@ -199,11 +199,11 @@ def predict(model, sols, setting, step):
     return np.argmin(errs)
 
 
-def thermalized_training_set(settings, masses, temp, dLfrac):
+def thermalize_training_set(settings, masses, temp, dLfrac):
     path = './training-'+str(temp)+'K/'
     primitive = settings['structure']['prim']
-    nconfig = int(settings['renormalization']['nconfig'])
-    nprocess = int(settings['renormalization']['nprocess'])
+    ndisp = int(settings['anharmonic']['ndisp'])
+#    temp = float(settings['anharmonic']['t_thermalize'])
 
     try:
         os.mkdir(path)
@@ -227,7 +227,7 @@ def thermalized_training_set(settings, masses, temp, dLfrac):
     fcfile = 'FORCE_CONSTANTS_2ND'
     shutil.copy(fcfile,path+fcfile)
     
-    qcv_displace(masses,temp,nconfig,path,nprocess)
+    qcv_displace(masses,temp,ndisp,path,1)
     print('+ Thermalized training sets generated!')
 
 def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
@@ -244,13 +244,15 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('\n')
 
+    if anh_order < 4 :
+        raise ValueError('Max anharmonic order must at least be 4!')
+
     path = str(temp)+'K/'
     primitive = settings['structure']['prim']
     nconfig = int(settings['renormalization']['nconfig'])
     nprocess = int(settings['renormalization']['nprocess'])
     mix_old = float(settings['renormalization']['mix_old'])
     conv_thresh = float(settings['renormalization']['conv_thresh'])
-    settings['training']['traindat1'] = path+'SPOSCAR '+path+'disp*'
     nac = NA_correction.from_dict(settings['phonon'])
     etafac = settings['phonon'].getfloat('etafac', 8.0)    
     pdfout = 'plots-'+temp+'K.pdf'
@@ -278,68 +280,86 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     fcfile = 'FORCE_CONSTANTS_2ND'
     shutil.copy(fcfile,fcfile+'_ORG')
     shutil.copy(fcfile+'_ORG',path+fcfile)
+    shutil.copy(path+fcfile,path+fcfile+'_OLD')
 
     prim = SymmetrizedStructure.init_structure(settings['structure'], primitive+str(temp)+'K', options.symm_step, options.symm_prim, options.log_level)
     model = init_ld_model(prim, settings['model'], settings['LDFF'] if 'LDFF' in settings.sections() else {}, options.clus_step,
                           options.symC_step, options.ldff_step)
+    
     print(prim.lattice.a)
     print(prim.lattice)
+
+    # Set-up initial sensing matrix with structures used for FC fitting
+    Amat_TD, fval_TD = init_training(model, settings['training'], step=2) 
+    nVal, nCorr = Amat_TD.shape
+    settings['training']['traindat1'] = path+'SPOSCAR '+path+'disp*' # change path to TD path going forward
+
+    sol = np.ones(nCorr)*sol
+    sol_renorm = sol[:]
+    param = model.get_params()
+    print('params : ', param)
+    start2 = 0
+    for order in range(2):
+        start2 += param[order]
+        start4 = start2
+    for order in range(2,4):
+        start4 += param[order]
+    print('start2 : ', start2, ',  start4 : ', start4)
+    sol2renorm_old = 0
+    sol2orig = sol[start2:start2+param[2]]
+    sol4 = sol[start4:start4+param[4]]
+    if anh_order >= 6:
+        start6 = start4
+        for order in range(4,6):
+            start6 += param[order]
+            sol6 = sol[start6:start6+param[6]]
+    
+    # Calculate free energy and T-dependent QCV matrix
+    free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path) # initial free energy
     
     count = 0
     while True:
         count += 1
         print('ITERATION ', count)
-        # Diagnonalize IFC and Generate T-dependent atomic displacements
-        free_energy = qcv_displace(prim.atomic_masses,temp,nconfig,path,nprocess)
-        shutil.copy(path+fcfile,path+fcfile+'_OLD')
-        # Set-up T-dependent sensing matrix
-        Amat_TD, fval_TD = init_training(model, settings['training'], step=2)
-        nVal, nCorr = Amat_TD.shape
 
-        if count == 1 : # Do this only once in the beginning
-            free_energy_old = free_energy
-            sol = np.ones(nCorr)*sol
-            sol_renorm = sol[:]
-            param = model.get_params()
-            print('params : ', param)
-            start2 = 0
-            for order in range(2):
-                start2 += param[order]
-            start4 = start2
-            for order in range(2,anh_order):
-                start4 += param[order]
-            print('start2 : ', start2, ',  start4 : ', start4)
-            sol2old = 0
-            sol2orig = sol[start2:start2+param[2]]
-            sol4 = sol[start4:start4+param[anh_order]]
-
+        if count > 1:
+            # Generate T-dependent atomic displacements using QCV
+            qcv_displace(Lmatcov,poscar,nconfig,nprocess,path)            
+            # Set-up T-dependent sensing matrix
+            Amat_TD, fval_TD = init_training(model, settings['training'], step=2)
+            nVal, nCorr = Amat_TD.shape
+                
+        # collect displacements for each order
         A2 = Amat_TD[:,start2:start2+param[2]].toarray()
-        A4 = Amat_TD[:,start4:start4+param[anh_order]].toarray()
-#        print('2nd order A dimensions : ', A2.shape)
-#        print('2nd order sol dimensions :', sol2.shape)
-#        print('4th order A dimensions : ', A4.shape)
-#        print('4th order sol dimensions :', sol4.shape)
+        A4 = Amat_TD[:,start4:start4+param[4]].toarray()
+        if anh_order >= 6:
+            A6 = Amat_TD[:,start6:start6+param[6]].toarray()
 
         ##### RENORMALIZE FC2 #####
         A2inv = np.linalg.pinv(A2) # Moore-Penrose pseudo-inverse...essentially a least-squares solver
-        sol2new = A2inv.dot(A4.dot(sol4)) # least-squares solution
-        sol_renorm[start2:start2+param[2]] = sol2orig + sol2old*mix_old + sol2new*(1-mix_old)
-        print('Renormalized sol_renorm : \n', sol_renorm[start2:start2+param[2]])
-        
-        # Check relative difference in sol2new
-        d_free_energy = (free_energy - free_energy_old)/free_energy
-        rel_chg = np.sum(abs(sol2new-sol2old)/abs(sol2new))/len(sol2new)
-        rel_diff = np.sum(abs(sol2new)/abs(sol2orig))/len(sol2new)
-        print('Relative change in sol2new from sol2old is ', rel_chg)
-        print('Relative difference from original sol2 is ', rel_diff)
-        print('Relative change in free energy (meV/atom) is ', d_free_energy)
-        sol2old = sol2new[:]
-        free_energy_old = free_energy
-        
+        sol2renorm = A2inv.dot(A4.dot(sol4)) # least-squares solution
+        if anh_order >= 6:
+            sol2renorm += A2inv.dot(A6.dot(sol6))
+        sol_renorm[start2:start2+param[2]] = sol2orig + sol2renorm_old*mix_old + sol2renorm*(1-mix_old)
+        print('Renormalized sol2 : \n', sol_renorm[start2:start2+param[2]])
+
         # Save renormalized FORCE_CONSTANTS_2ND
         phonon = Phonon(prim, model, sol_renorm, pdfout, NAC=nac, etafac=etafac)
         save_pot(model, sol_renorm, settings['export_potential'], 2, phonon)
+        shutil.copy(path+fcfile,path+fcfile+'_OLD')
         shutil.copy(fcfile,path+fcfile)
+
+        free_energy, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path)        
+        
+        # Check relative difference in sol2renorm
+        d_free_energy = (free_energy - free_energy_old)/free_energy
+        rel_chg = np.sum(abs(sol2renorm-sol2renorm_old)/abs(sol2renorm))/len(sol2renorm)
+        rel_diff = np.sum(abs(sol2renorm)/abs(sol2orig))/len(sol2renorm)
+        print('Relative change in sol2renorm from sol2renorm_old is ', rel_chg)
+        print('Relative difference from original sol2 is ', rel_diff)
+        print('Relative change in free energy (meV/atom) is ', d_free_energy)
+        sol2renorm_old = sol2renorm[:]
+        free_energy_old = free_energy
 
         # BREAK if relative difference in Free Energy is small
         if abs(d_free_energy) < conv_thresh and count > 1:

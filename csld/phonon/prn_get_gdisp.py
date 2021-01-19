@@ -4,6 +4,7 @@ import scipy
 from scipy import array, linalg, dot
 from csld.phonon import head
 from numpy import *
+import numpy as np
 from numpy.linalg import *
 import copy
 import numpy.linalg
@@ -76,7 +77,7 @@ def read_poscar(file,massall): #assuming SPOSCAR
     return poscar
 
 def write_poscar_cart(file, poscar, carposdis):
-    print("Writing to "+str(file))
+    #print("Writing to "+str(file))
     dataout="System name \n"
     dataout+="1.0 \n"    
     dataout+=" ".join(map(str,poscar['vec1']))+"\n"
@@ -93,7 +94,7 @@ def write_poscar_cart(file, poscar, carposdis):
     ffout.close()
 
 def write_poscar_direct(file, poscar, carposdis):
-    print("Writing to "+str(file))
+    #print("Writing to "+str(file))
     dataout="System name \n"
     dataout+="1.0 \n"
     dataout+=" ".join(map(str,poscar['vec1']))+"\n"
@@ -111,7 +112,7 @@ def write_poscar_direct(file, poscar, carposdis):
     ffout.close()
 
 def write_zero_forces(file, poscar, carposdis):
-    print("Writing to "+str(file))
+    #print("Writing to "+str(file))
     dataout=""
     #dataout="System name \n"
     #dataout+="1.0 \n"
@@ -133,8 +134,8 @@ def write_zero_forces(file, poscar, carposdis):
 def dispWrap(dispAll,Lmatcov,natom,poscar,path,iconf):
     #dispAll = random.normal(mu, sigma, ndim)
     disp=(dot(Lmatcov, dispAll[iconf])).reshape((natom, 3)) 
-    print("---------------------------------------------------") 
-    print(norm(disp)/sqrt(len(disp)))
+    #print("---------------------------------------------------") 
+    #print(norm(disp)/sqrt(len(disp)))
     latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']])
     dirpos=poscar['cor']+dot(disp, inv(latvec))
     mkdir(path+"disp-"+str(iconf+1)) 
@@ -143,8 +144,7 @@ def dispWrap(dispAll,Lmatcov,natom,poscar,path,iconf):
 #    write_zero_forces(path+"disp-"+str(iconf+1)+"/force.txt", poscar, dirpos)
     
 #-----------------------------------------------------------------------
-def qcv_displace(masslist,temperature,nconfig,path,numprocess):
-    #read POSCAR
+def get_qcv(masslist,temperature,path):
     readPOSCAR=0
     if readPOSCAR > 1:
         tmp=get_yaml("./mesh.yaml")
@@ -153,18 +153,13 @@ def qcv_displace(masslist,temperature,nconfig,path,numprocess):
         print("******Check evc normalization: "+str(dot(matevc[:,0], matevc[:,0])))
     else:
         poscar=read_poscar(path+"SPOSCAR",masslist)  # mass for each species
-#    print("POSCAR----------------------------------------------------------")
-#    for item in poscar:
-#        print("------"+str(item))
-#        print(str(poscar[item]))
-#    print("******Number of atoms: "+str(poscar['natom']))
 
-    #read IFC
-#    print("IFC-------------------------------------------------------------")
+    latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']]) * poscar['scaling']        
+    natom=poscar['natom']
+    masses=poscar['mas']
+    ndim=3*natom
+    print("Number of atoms: "+str(natom))
     ifc=get_ifc(path+"FORCE_CONSTANTS_2ND")
-    #print ifc[0:3,3:6]
-
-    #diagonalize Dynamical matrix
     [eig, evc]=get_dig(poscar,ifc)
     print("Frequency-------------------------------------------------------")
     print("******Number of eigenfrequencies: "+str(len(eig)))
@@ -177,40 +172,43 @@ def qcv_displace(masslist,temperature,nconfig,path,numprocess):
     for tmp in eig:
         if tmp < 0:
             freq.append(-1*sqrt(-tmp)*unit)
-            if sqrt(-tmp)*unit > 0.005: # check if it is acoustic modes
+            if sqrt(-tmp)*unit > 0.005: # check if it the mode is imaginary
                 isImag=isImag+1
         else:
             freq.append(sqrt(tmp)*unit)
-    idx = array(freq).argsort()[::1]  
-    head.writenumber(isImag, path+"isImag")
-#    print("******Sort frequency index:")
-#    print(idx)
-#    print("******Unsorted frequencies (THz)")
-#    print(array(freq))
+#    head.writenumber(isImag, path+"isImag")             
+    idx = array(freq).argsort()[::1]
     sorteig=array(freq)[idx]
     sortevc=evc[:,idx]
-#    print("******Sorted frequencies (THz)")
-#    print(sorteig)
-#    print("Eigenvector-----------------------------------------------------")
-    print("******Check evc normalization: ")
-    print(dot(sortevc[:,0], sortevc[:,0]))
-    head.write1dmat(list(sorteig), path+"frequencies")
-    #print type(sortevc[:,0])
-#    print(sortevc[:,0])
-
-    # Construct quantum covariance matrix
-    natom=poscar['natom']
-    masses=poscar['mas']
-    ndim=3*natom
-    print("Number of atoms: "+str(natom))
     matcov=[[ 0.0 for i in range(ndim)] for j in range(ndim)]
-    free_energy, matcov = get_matcov.pmatcov(temperature, natom, masses, path)
+    free_energy, matcov = get_matcov.pmatcov(temperature, natom, masses, path)    
 #    matcov=head.read2dmat(path+"matcov.dat")
 #    print("Eigenvalues of covariance matrix: ")
 #    print(eigvalsh(matcov))
-    Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
-#    head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")   
-    latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']]) * poscar['scaling']
+
+    # Get lower-triangle matrix
+    try: # Cholesky, but could fail                                                                                                                                      
+        Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
+    except: # Cholesky with added multiple of identity (Nocedal & Wright, p.51)
+        if np.min(matcov) > 0 :
+            tau = 0
+        else:
+            beta = 0.1
+            tau = -np.min(matcov)+beta
+        while True:
+            matcov = matcov+tau*np.eye(ndim)
+            try:
+                Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
+                break
+            except:
+                tau = max(2*tau,beta)
+#    head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")
+
+    return free_energy, Lmatcov, poscar
+
+# ----------------------
+def qcv_displace(Lmatcov,poscar,nconfig,numprocess,path):
+
 #    print("Lattice vector: ")
 #    print(latvec)
     #random seed to ensure the randoming sampling are same
@@ -219,6 +217,8 @@ def qcv_displace(masslist,temperature,nconfig,path,numprocess):
     # pre-generate all random distributions
     mu = 0.0
     sigma = 1.0 # 0.5
+    ndim = Lmatcov.shape[0]
+    natom = int(ndim/3)
     dispAll=[random.normal(mu, sigma, ndim) for iconf in range(nconfig)] # Gaussian random sampling
     stime=time.time()
     if numprocess == 1:
@@ -233,7 +233,7 @@ def qcv_displace(masslist,temperature,nconfig,path,numprocess):
         raise ValueError("numprocess should be natural number")
     print("Time for generating displacements: "+str(time.time()-stime)+"\n")
 
-    return free_energy
+    return
 
 
 #make sure path exist
