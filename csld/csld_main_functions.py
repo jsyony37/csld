@@ -226,8 +226,9 @@ def thermalize_training_set(settings, masses, temp, dLfrac):
         ff.writelines(lines)
     fcfile = 'FORCE_CONSTANTS_2ND'
     shutil.copy(fcfile,path+fcfile)
-    
-    qcv_displace(masses,temp,ndisp,path,1)
+
+    free_energy, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path)
+    qcv_displace(Lmatcov,poscar,ndisp,nprocess,path)
     print('+ Thermalized training sets generated!')
 
 def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
