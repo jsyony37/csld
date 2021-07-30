@@ -231,6 +231,7 @@ def thermalize_training_set(settings, masses, temp, dLfrac):
     qcv_displace(Lmatcov,poscar,ndisp,nprocess,path)
     print('+ Thermalized training sets generated!')
 
+    
 def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     """
     :param model: The LD model
@@ -289,14 +290,16 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     
     print(prim.lattice.a)
     print(prim.lattice)
-
+    print(settings['training']['traindat1'])
+    
     # Set-up initial sensing matrix with structures used for FC fitting
     Amat_TD, fval_TD = init_training(model, settings['training'], step=2) 
     nVal, nCorr = Amat_TD.shape
-    settings['training']['traindat1'] = path+'SPOSCAR '+path+'disp*' # change path to TD path going forward
+    settings_TD = copy.deepcopy(settings)
+    settings_TD['training']['traindat1'] = path+'SPOSCAR '+path+'disp*' # change path to TD path going forward
 
     sol = np.ones(nCorr)*sol
-    sol_renorm = sol[:]
+    sol_renorm = np.copy(sol[:])
     param = model.get_params()
     print('params : ', param)
     start2 = 0
@@ -306,14 +309,14 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     for order in range(2,4):
         start4 += param[order]
     print('start2 : ', start2, ',  start4 : ', start4)
-    sol2renorm_old = 0
-    sol2orig = sol[start2:start2+param[2]]
-    sol4 = sol[start4:start4+param[4]]
+    sol2orig = np.copy(sol[start2:start2+param[2]])
+    sol2renorm_old = np.zeros(len(sol2orig))
+    sol4 = np.copy(sol[start4:start4+param[4]])
     if anh_order >= 6:
         start6 = start4
         for order in range(4,6):
             start6 += param[order]
-            sol6 = sol[start6:start6+param[6]]
+            sol6 = np.copy(sol[start6:start6+param[6]])
     
     # Calculate free energy and T-dependent QCV matrix
     free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path) # initial free energy
@@ -321,13 +324,14 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     count = 0
     while True:
         count += 1
+        print('##############')
         print('ITERATION ', count)
-
+        print('##############')
         if count > 1:
             # Generate T-dependent atomic displacements using QCV
             qcv_displace(Lmatcov,poscar,nconfig,nprocess,path)            
             # Set-up T-dependent sensing matrix
-            Amat_TD, fval_TD = init_training(model, settings['training'], step=2)
+            Amat_TD, fval_TD = init_training(model, settings_TD['training'], step=2)
             nVal, nCorr = Amat_TD.shape
                 
         # collect displacements for each order
@@ -353,17 +357,21 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
         free_energy, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path)        
         
         # Check relative difference in sol2renorm
+        if count > 1:
+            cosine_sim = np.dot(sol2renorm,sol2renorm_old)/np.linalg.norm(sol2renorm)/np.linalg.norm(sol2renorm_old)
+        else:
+            cosine_sim = 0
         d_free_energy = (free_energy - free_energy_old)/free_energy
-        rel_chg = np.sum(abs(sol2renorm-sol2renorm_old)/abs(sol2renorm))/len(sol2renorm)
         rel_diff = np.sum(abs(sol2renorm)/abs(sol2orig))/len(sol2renorm)
-        print('Relative change in sol2renorm from sol2renorm_old is ', rel_chg)
+        print('Cosine similiarty to the previous sol2renorm is ', cosine_sim)
         print('Relative difference from original sol2 is ', rel_diff)
         print('Relative change in free energy (meV/atom) is ', d_free_energy)
-        sol2renorm_old = sol2renorm[:]
+        sol2renorm_old = np.copy(sol2renorm[:])
         free_energy_old = free_energy
 
         # BREAK if relative difference in Free Energy is small
-        if abs(d_free_energy) < conv_thresh and count > 1:
+#        if abs(d_free_energy) < conv_thresh and count > 1:
+        if cosine_sim > conv_thresh and count > 1 :
             print('!!!!! Convergence Reached - Renormalization Done for ',str(temp),' K !!!!!')
             break
 

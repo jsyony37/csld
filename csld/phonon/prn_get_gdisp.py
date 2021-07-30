@@ -19,7 +19,6 @@ def mkdir(dir):
     else:
         os.system(str("mkdir"+" "+dir))
 
-
 def get_ifc(file):
     fin=None
     fin=open(file,'r')
