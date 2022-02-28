@@ -362,7 +362,7 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
         else:
             cosine_sim = 0
         d_free_energy = (free_energy - free_energy_old)/free_energy
-        rel_diff = np.sum(abs(sol2renorm)/abs(sol2orig))/len(sol2renorm)
+        rel_diff = np.sum(abs(sol2renorm)-abs(sol2orig))/len(sol2renorm)
         print('Cosine similiarty to the previous sol2renorm is ', cosine_sim)
         print('Relative difference from original sol2 is ', rel_diff)
         print('Relative change in free energy (meV/atom) is ', d_free_energy)

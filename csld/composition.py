@@ -8,7 +8,7 @@ This module implements a Composition class to represent compositions.
 import re
 import collections
 import string
-from fractions import gcd
+from fractions import math
 from itertools import chain
 from .util.periodic_table import get_el_sp, Element
 from .util.string_utils import formula_double_format
@@ -721,7 +721,7 @@ def reduce_formula(sym_amt):
                           get_el_sp(syms[num_el - 1]).X
                           - get_el_sp(syms[num_el - 2]).X < 1.65)
 
-    factor = reduce(gcd, sym_amt.values())
+    factor = reduce(math.gcd, sym_amt.values())
     reduced_form = []
     n = num_el - 2 if contains_polyanion else num_el
     for i in range(0, n):
