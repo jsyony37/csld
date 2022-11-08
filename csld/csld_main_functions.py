@@ -323,18 +323,16 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     # Calculate free energy and T-dependent QCV matrix
     free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,0,path) # initialization (use 0 K)
     
-    count = 0
     while True:
-        count += 1
         print('##############')
         print('ITERATION ', count)
         print('##############')
-        if count >= 1:
-            # Generate T-dependent atomic displacements using QCV
-            qcv_displace(Lmatcov,poscar,nconfig,nprocess,path)            
-            # Set-up T-dependent sensing matrix
-            Amat_TD, fval_TD = init_training(model, settings_TD['training'], step=2)
-            nVal, nCorr = Amat_TD.shape
+        
+        # Generate T-dependent atomic displacements using QCV
+        qcv_displace(Lmatcov,poscar,nconfig,nprocess,path)            
+        # Set-up T-dependent sensing matrix
+        Amat_TD, fval_TD = init_training(model, settings_TD['training'], step=2)
+        nVal, nCorr = Amat_TD.shape
                 
         # collect displacements for each order
         A2 = Amat_TD[:,start2:start2+param[2]].toarray()
