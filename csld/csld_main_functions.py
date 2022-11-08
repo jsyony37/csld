@@ -322,8 +322,10 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     
     # Calculate free energy and T-dependent QCV matrix
     free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,0,path) # initialization (use 0 K)
-    
+
+    count = 0
     while True:
+        count += 1
         print('##############')
         print('ITERATION ', count)
         print('##############')
