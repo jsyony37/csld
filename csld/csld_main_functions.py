@@ -290,9 +290,9 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     
     print(prim.lattice.a)
     print(prim.lattice)
-    print(settings['training']['traindat1'])
-    
-    # Set-up initial sensing matrix with structures used for FC fitting
+
+#    print(settings['training']['traindat1'])    
+#    # Set-up initial sensing matrix with structures used for FC fitting
     Amat_TD, fval_TD = init_training(model, settings['training'], step=2) 
     nVal, nCorr = Amat_TD.shape
     settings_TD = copy.deepcopy(settings)
@@ -305,12 +305,14 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
     start2 = 0
     for order in range(2):
         start2 += param[order]
-        start4 = start2
+    start3 = start2 + param[2]
+    start4 = start2
     for order in range(2,4):
         start4 += param[order]
-    print('start2 : ', start2, ',  start4 : ', start4)
+    print('start2 : ', start2, ',  start3 : ', start3, ',  start4 : ', start4)
     sol2orig = np.copy(sol[start2:start2+param[2]])
     sol2renorm_old = np.zeros(len(sol2orig))
+    sol3 = np.copy(sol[start3:start3+param[3]])
     sol4 = np.copy(sol[start4:start4+param[4]])
     if anh_order >= 6:
         start6 = start4
@@ -319,7 +321,7 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
             sol6 = np.copy(sol[start6:start6+param[6]])
     
     # Calculate free energy and T-dependent QCV matrix
-    free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,temp,path) # initial free energy
+    free_energy_old, Lmatcov, poscar = get_qcv(prim.atomic_masses,0,path) # initialization (use 0 K)
     
     count = 0
     while True:
@@ -327,7 +329,7 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
         print('##############')
         print('ITERATION ', count)
         print('##############')
-        if count > 1:
+        if count >= 1:
             # Generate T-dependent atomic displacements using QCV
             qcv_displace(Lmatcov,poscar,nconfig,nprocess,path)            
             # Set-up T-dependent sensing matrix
@@ -336,13 +338,14 @@ def renormalization(model, settings, sol, options, temp, dLfrac, anh_order):
                 
         # collect displacements for each order
         A2 = Amat_TD[:,start2:start2+param[2]].toarray()
+        A3 = Amat_TD[:,start3:start3+param[3]].toarray()
         A4 = Amat_TD[:,start4:start4+param[4]].toarray()
         if anh_order >= 6:
             A6 = Amat_TD[:,start6:start6+param[6]].toarray()
 
         ##### RENORMALIZE FC2 #####
         A2inv = np.linalg.pinv(A2) # Moore-Penrose pseudo-inverse...essentially a least-squares solver
-        sol2renorm = A2inv.dot(A4.dot(sol4)) # least-squares solution
+        sol2renorm = A2inv.dot(A3.dot(sol3)+A4.dot(sol4)) # least-squares solution
         if anh_order >= 6:
             sol2renorm += A2inv.dot(A6.dot(sol6))
         sol_renorm[start2:start2+param[2]] = sol2orig + sol2renorm_old*mix_old + sol2renorm*(1-mix_old)
