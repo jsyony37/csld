@@ -8,7 +8,7 @@ This module implements a Composition class to represent compositions.
 import re
 import collections
 import string
-from fractions import gcd
+from math import gcd
 from itertools import chain
 from .util.periodic_table import get_el_sp, Element
 from .util.string_utils import formula_double_format

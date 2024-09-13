@@ -143,9 +143,7 @@ def save_pot(model, sol, setting, step, phonon):
                     phonon.export_hessian_forshengbte(sc)
                 print('Dim after export_hessian : ', phonon.dim)
             elif ord in [3,4]:
-                if use_old:
-                    model.save_fcshengbte(sol, ord)
-            elif ord in [3,4]:
+                print('Order:',ord)
                 if use_old:
                     model.save_fcshengbte_original(sol, ord)
                 else:

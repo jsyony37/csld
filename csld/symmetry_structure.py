@@ -76,8 +76,8 @@ class SymmetrizedStructure(Structure):
 # The look-up tables _ijk_tbl and _l_tbl can be constructed by looking at the primitive cell only
 # Also need the integer matrices Ag, i.e. rotation matrix in fractional coordinates
 #
-        ijkl_tbl = np.zeros((structure.num_sites, self.nsymm, 4), dtype=np.int)
-        # l_tbl = np.zeros((structure.num_sites, self.nsymm), dtype=np.int)
+        ijkl_tbl = np.zeros((structure.num_sites, self.nsymm, 4), dtype=int)
+        # l_tbl = np.zeros((structure.num_sites, self.nsymm), dtype=int)
 
         for il in range(structure.num_sites):
 #            print("debug> site ", il, self.sites[isite])
@@ -98,7 +98,7 @@ class SymmetrizedStructure(Structure):
                 # l_tbl[il, ig] = lp
         self._ijkl_tbl = ijkl_tbl
         # self._l_tbl = l_tbl
-        self._Arot_int = [block_diag(g.rot_f.astype(np.int), [[0]]) for g in self.spacegroup]
+        self._Arot_int = [block_diag(g.rot_f.astype(int), [[0]]) for g in self.spacegroup]
         #self.alloy_species=None
         self._orbits = None
 
@@ -196,7 +196,7 @@ class SymmetrizedStructure(Structure):
         # print('F, T',self.standardize_cell(False, True, symprec).lattice.matrix)
         # print('T, F',self.standardize_cell(True, False, symprec).lattice.matrix)
         # print('T, T',self.standardize_cell(True, True, symprec).lattice.matrix)
-        scmat= newprim.lattice.matrix.dot(self.lattice.inv_matrix).round().astype(np.int)
+        scmat= newprim.lattice.matrix.dot(self.lattice.inv_matrix).round().astype(int)
         if not (scmat==np.eye(3,dtype=int)).all():
             print("WARNING Symmetrizing primitive cell: lattice shape changed by", scmat, newprim.lattice.matrix.dot(self.lattice.inv_matrix))
         else:

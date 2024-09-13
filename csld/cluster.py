@@ -47,7 +47,7 @@ class ClusterSite(PeriodicSite):
         if ijkl is None:
             self._ijkl = prim.frac2ijkl(f_crd)
         else:
-            self._ijkl = np.array(ijkl, dtype=np.int)
+            self._ijkl = np.array(ijkl, dtype=int)
             f_crd = prim.ijkl2frac(self._ijkl)
         self.ijkl = self._ijkl.tolist()
         self._orb_id = prim.orbit_of_l[self.ijkl[3]]
@@ -368,7 +368,7 @@ class Cluster():
 
         l1 = self.vertices[0].ijkl[3]
         ijk1 = self.vertices[0]._ijkl[:3]
-        trijk = np.zeros(4, dtype=np.int)
+        trijk = np.zeros(4, dtype=int)
         for i in range(self.order):
             if l1 != c2[i][3]:
                 continue
@@ -465,7 +465,7 @@ class Cluster():
         """
         move first atom to destination cell
         """
-        dijkl = np.zeros(4, dtype=np.int)
+        dijkl = np.zeros(4, dtype=int)
         if self.order > 0:
             if dijk is None:
                 dijkl[:3] = dest - self.vertices[0]._ijkl[:3]
@@ -497,7 +497,7 @@ class Cluster():
         invSCmat = sc.inv_sc_mat
         n_cell = sc.n_cell
         scmat = sc.sc_mat
-        return [SCref.index(np.dot(np.mod(np.dot(pt[:3], invSCmat), 1), scmat).astype(np.int).tolist()) +
+        return [SCref.index(np.dot(np.mod(np.dot(pt[:3], invSCmat), 1), scmat).astype(int).tolist()) +
                 n_cell*pt[3] for pt in self.ijkls]
 
 
@@ -535,7 +535,7 @@ class Cluster():
                 gclus = clus.operated_by(ig)
                 if clus.order>0 and len(clus.orders)<=1 and hasattr(prim, 'spacegroup'):
                     # move to center of mass
-                    ijk0 = np.append(np.mean(np.array(gclus)[:,:3], axis=0).astype(np.int), 0)
+                    ijk0 = np.append(np.mean(np.array(gclus)[:,:3], axis=0).astype(int), 0)
                     # print(ijk0, clus, gclus)
                     gclus = [v - ijk0 for v in gclus]
                 [flag, gp] = clus.equivalent_by_lattranslation(gclus)

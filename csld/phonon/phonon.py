@@ -460,8 +460,9 @@ class Phonon():
                             
         
     # for original (unmodified) version of ShengBTE         
-    def export_hessian_forshengbte_original(self, sc):
+    def export_hessian_forshengbte(self, sc):#_original(self, sc):
         from csld.util.tool import matrix2text
+        print('ORIGINAL SHENGBTE FORMAT')
         na= self.prim.num_sites
         Nsc = sc.n_cell
         hmat = self.get_hessian(sc, True)
@@ -476,8 +477,8 @@ class Phonon():
                     scorder = sort_idx[scindex]
                     for ia2 in range(na):
                         for l,ls in zip(sort_idx,sc.ijk_ref):
-                            if scindex == 0 and ia1 == 0 and ia2 == 0:
-                                print("l = ",l," ls =",ls)
+#                            if scindex == 0 and ia1 == 0 and ia2 == 0:
+#                                print("l = ",l," ls =",ls)
                             f.write("%d %d\n%s\n"%(index[ia1,0,0,0]+1+scindex,index[ia2,ls[2],ls[1],ls[0]]+1,matrix2text(hmat[ia1,scorder,:,ia2,l,:])))
 
 
