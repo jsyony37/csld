@@ -383,7 +383,7 @@ def task8(potf1, scmat2, prim):
     pot = read_pot(potf1)
     if debug_level > 1:
         print_pot_summary(pot, prim)
-    scmat = np.loadtxt(scmat2).astype(np.int)
+    scmat = np.loadtxt(scmat2).astype(int)
     scinfo = SupercellStructure.from_scmat(prim, scmat)
     for x in pot:
         clus = Cluster.from_coords(x[0], prim)
@@ -402,7 +402,7 @@ def magpho_pot(potf1, scmat2):
     from csld.util.io_utils import read_nrecord_array
     from csld.coord_utils import supercell_latticepoints
     
-    scmat = np.loadtxt(scmat2).astype(np.int)
+    scmat = np.loadtxt(scmat2).astype(int)
     inv = np.linalg.inv(scmat)
     refpts= supercell_latticepoints(scmat)
     refpts_insc = refpts.dot(inv)
@@ -444,7 +444,7 @@ def csld_pot_like_magpho(potf1, scmat2):
     from csld.util.io_utils import read_nrecord_array
     from csld.coord_utils import supercell_latticepoints
     
-    scmat = np.loadtxt(scmat2).astype(np.int)
+    scmat = np.loadtxt(scmat2).astype(int)
     inv = np.linalg.inv(scmat*1.0)
     refpts= supercell_latticepoints(scmat)
 #    refpts_insc = refpts.dot(inv)
@@ -885,7 +885,7 @@ def make_symmetric_supercell(posf, target):
     #print('dataset', dataset)
     for k in sorted(dataset): print(k, dataset[k])
     scmat0= np.linalg.inv(dataset['transformation_matrix'])
-    scmat=np.rint(scmat0).astype(np.int)
+    scmat=np.rint(scmat0).astype(int)
     assert np.max(np.max(scmat-scmat0))<1e-3, ValueError('scmat from dataset[transformation_matrix] not integer')
     print(scmat)
 
@@ -1223,7 +1223,7 @@ if __name__ == '__main__':
 
     elif options.task== 'supercell':
         prim  = Poscar.from_file(options.prim).structure
-        scmat = np.loadtxt(options.p1).astype(np.int)
+        scmat = np.loadtxt(options.p1).astype(int)
         print(Poscar(SupercellStructure.from_scmat(prim, scmat)))
 
     elif options.task== 'density':

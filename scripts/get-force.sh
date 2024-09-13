@@ -62,7 +62,7 @@ for f in "${outfs[@]}"; do
 	    continue
 	fi
     fi
-
+    echo $outf
     if [[ "$outf" == *.bz2 ]]; then
 	CAT=bzcat
     elif [[ "$outf" == *.gz ]]; then
@@ -70,7 +70,7 @@ for f in "${outfs[@]}"; do
     else
 	CAT=cat
     fi
-
+    echo $STEP
     if [[ ! "$STEP" =~ ^-?[0-9]+$ ]]; then
 	exit -1
     fi
@@ -80,12 +80,12 @@ for f in "${outfs[@]}"; do
 	exit -2
     fi
 
-    line=`$CAT $outf | grep_occurence "$tag" $STEP`
+    line=$(grep -n "$tag" "$outf" | head -n 1 | cut -d: -f1)
+    echo $line
     if [ -z "$line" ]; then
 	exit -1
     fi
     line=$((line+dline))
-
     if [ $batch == 0 ]; then
 	$CAT $outf| awk -v s=$Start "(NR>$line)&&(NR<=$line+$NIONS)"'{printf("%-16s %-16s %-16s\n", $(s), $(s+1), $(s+2))}'
     else

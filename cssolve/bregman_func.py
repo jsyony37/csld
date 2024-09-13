@@ -10,7 +10,7 @@ To compile the Breagman library, do the following::
 
 import scipy.io
 import numpy as np
-from scipy.sparse.linalg.eigen.arpack import eigsh
+from scipy.sparse.linalg import eigsh
 try:
     from bregman import bregman
 except ImportError:

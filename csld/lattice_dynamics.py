@@ -155,7 +155,7 @@ class LDModel(BasicLatticeModel):
     def prepare_index(self):
         # self.process_all_fct()
         self.nfct = self.Cmat.shape[0]
-        allfct_ord = np.hstack([np.full(3**o.cluster.order, o.cluster.order, dtype=np.int) for o in self.orbits])
+        allfct_ord = np.hstack([np.full(3**o.cluster.order, o.cluster.order, dtype=int) for o in self.orbits])
         self.fct_ord = [allfct_ord[row[0]] for row in self.Cmat.tolil().rows]
         self.ord_range = {o: len(self.fct_ord) - self.fct_ord[::-1].index(o) - 1 if o in self.fct_ord else 0
                           for o in range(self.maxorder+1)}
@@ -517,7 +517,7 @@ class LDModel(BasicLatticeModel):
             fcm_dp = self.get_hessian_dipole_corrected(scinfo)
         else:
             fcm_dp = np.zeros((scinfo.num_sites*3, scinfo.num_sites*3))
-        flag_dp = np.zeros((scinfo.num_sites, scinfo.num_sites),dtype=np.int)
+        flag_dp = np.zeros((scinfo.num_sites, scinfo.num_sites),dtype=int)
 
         for iO, orb in enumerate(self.orbits):
             clus0 = orb.cluster
@@ -617,7 +617,7 @@ class LDModel(BasicLatticeModel):
         np.savetxt('sol_fct',sol_fct)
         ops = self.prim.spacegroup
 #        scinfo = SupercellStructure.from_scmat(self.prim, scmat)
-#        flag_dp = np.zeros((scinfo.num_sites, scinfo.num_sites),dtype=np.int)
+#        flag_dp = np.zeros((scinfo.num_sites, scinfo.num_sites),dtype=int)
         fc_name="FORCE_CONSTANTS_%s"%({3:"3RD",4:"4TH"}[ord])
         fp=io.StringIO()
         fp2=io.StringIO()

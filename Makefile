@@ -2,7 +2,6 @@ UNAME_S := $(shell uname -s)
 UNAME_N := $(shell uname -n | sed 's/[0-9]*//g')
 ARCH := $(shell uname -p)
 
-
 ifeq ($(UNAME_S),Linux)
 ifeq ($(ARCH),ppc64le)
 LIB =
@@ -14,8 +13,8 @@ F90=gfortran
 F77=${F90}
 F77FLAGS = ${FFLAGS}
 else
-#LIB = -lmkl_rt 
-LIB = -lmkl_rt -L/opt/intel-14.0/mkl/lib/intel64
+#LIB = -lmkl_rt -L/opt/intel-14.0/mkl/lib/intel64
+LIB = -lmkl_rt -L$MKLROOT/lib/intel64
 # if --link-lapack_opt fails, try to link to mkl manually with mkl_rt library
 F2PY = f2py
 OPTFLAG = -fast -xHost

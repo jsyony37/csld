@@ -36,7 +36,7 @@ setup(
      url="https://to-be-determined",
      platforms=['any'],
      packages=find_packages(),
-     version="1.0",
+     version="2.0",
      install_requires=["numpy>=1.9", "scipy>=0.13", "matplotlib>=1.4", "spglib>=1.9"],
      package_data={"csld.util": ["*.json"],
 #       'csld': ['../bregman*.so', '../f_phonon*.so', '../bcs_driver*.so','../f_util*.so','../Makefile', '../css*/*.f90','../compile/f_util/*.f90', '../csld/*/*.f90', '../csld/*/*.f']},
