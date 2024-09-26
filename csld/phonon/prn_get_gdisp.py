@@ -118,8 +118,8 @@ def write_zero_forces(file, poscar, carposdis):
     #dataout+=" ".join(map(str,poscar['vec1']))+"\n"
     #dataout+=" ".join(map(str,poscar['vec2']))+"\n"
     #dataout+=" ".join(map(str,poscar['vec3']))+"\n"
-    #PRN uses no species                                                                                                                                                           
-    #dataout+=" ".join(map(str,poscar['species']))+"\n"                                                                                                                            
+    #PRN uses no species
+    #dataout+=" ".join(map(str,poscar['species']))+"\n"
     #dataout+=" ".join(map(str,poscar['specount']))+"\n"
     #dataout+="Direct"+"\n"
     for pos in carposdis:
@@ -138,7 +138,7 @@ def dispWrap(dispAll,Lmatcov,natom,poscar,path,iconf):
     latvec=array([poscar['vec1'],poscar['vec2'],poscar['vec3']])
     dirpos=poscar['cor']+dot(disp, inv(latvec))
     mkdir(path+"disp-"+str(iconf+1)) 
-    write_poscar_direct(path+"disp-"+str(iconf+1)+"/POSCAR", poscar, dirpos)
+    write_poscar_cart(path+"disp-"+str(iconf+1)+"/POSCAR", poscar, dirpos)
 #    write_poscar_direct(path+"disp-"+str(iconf+1)+"/POSCAR.direct", poscar, dirpos)
 #    write_zero_forces(path+"disp-"+str(iconf+1)+"/force.txt", poscar, dirpos)
     
@@ -165,16 +165,14 @@ def get_qcv(masslist,temperature,path):
     freq=[]
     unit2thz=98.1761/2/pi # eV / A^2 / au to THz
     unit2mev=unit2thz*4.135665538536  #THZ to meV
-    unit=unit2mev
-    unit=unit2thz
     isImag=0
     for tmp in eig:
         if tmp < 0:
-            freq.append(-1*sqrt(-tmp)*unit)
-            if sqrt(-tmp)*unit > 0.005: # check if it the mode is imaginary
+            freq.append(-1*sqrt(-tmp)*unit2thz)
+            if sqrt(-tmp)*unit2thz > 0.005: # check if it the mode is imaginary
                 isImag=isImag+1
         else:
-            freq.append(sqrt(tmp)*unit)
+            freq.append(sqrt(tmp)*unit2thz)
 #    head.writenumber(isImag, path+"isImag")             
     idx = array(freq).argsort()[::1]
     sorteig=array(freq)[idx]
@@ -186,7 +184,7 @@ def get_qcv(masslist,temperature,path):
 #    print(eigvalsh(matcov))
 
     # Get lower-triangle matrix
-    try: # Cholesky, but could fail                                                                                                                                      
+    try: # Cholesky, but could fail
         Lmatcov = scipy.linalg.cholesky(matcov,lower=True)
     except: # Cholesky with added multiple of identity (Nocedal & Wright, p.51)
         if np.min(matcov) > 0 :
@@ -202,7 +200,6 @@ def get_qcv(masslist,temperature,path):
             except:
                 tau = max(2*tau,beta)
 #    head.write2dmat(Lmatcov.tolist(), path+"Lmatcov")
-
     return free_energy, Lmatcov, poscar
 
 # ----------------------

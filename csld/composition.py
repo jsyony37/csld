@@ -721,7 +721,7 @@ def reduce_formula(sym_amt):
                           get_el_sp(syms[num_el - 1]).X
                           - get_el_sp(syms[num_el - 2]).X < 1.65)
 
-    factor = reduce(gcd, sym_amt.values())
+    factor = reduce(math.gcd, sym_amt.values())
     reduced_form = []
     n = num_el - 2 if contains_polyanion else num_el
     for i in range(0, n):

@@ -838,7 +838,7 @@ class IStructure(SiteCollection):
                          in itertools.groupby(sites,
                                               key=lambda s: s.species_string)]
 
-        num_fu = reduce(gcd, map(len, grouped_sites))
+        num_fu = reduce(math.gcd, map(len, grouped_sites))
         min_vol = original_volume * 0.5 / num_fu
 
         min_site_list = min(grouped_sites, key=lambda group: len(group))
