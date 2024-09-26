@@ -54,6 +54,7 @@ def fit_data(model, Amat, fval, setting, step, pdfout):
     print('!!!!! COMPRESSIVE SENSING  !!!!!!')
     print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('\n')
+
     if step == 1:
         solutions = model.load_solution(setting['solution_in'],setting.getboolean('potential_coords_ijkl',False))
         if Amat is not None:

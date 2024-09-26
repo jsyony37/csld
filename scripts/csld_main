@@ -102,6 +102,8 @@ if __name__ == '__main__':
                           options.symC_step, options.ldff_step)
     print(dir(prim))
     Amat, fval = init_training(model, settings['training'], options.train_step)
+    print('Amat')
+    print(np.min(Amat),np.max(Amat))
     try: 
         print(type(Amat.toarray()),Amat.toarray().shape)
         print('A_mat type, dtype, dim, max, min \n : ', type(Amat), Amat.dtype, Amat.shape, np.amax(Amat.toarray()), np.amin(Amat.toarray()))

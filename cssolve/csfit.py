@@ -151,7 +151,7 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
     :param fitf:
     :return:
     """
-    # print("Amat", Amat.__class__)
+    print("Amat", Amat.__class__)
     nVal, nCorr = Amat.shape
     print('Amat Dimensions : ', nVal, ' ', nCorr)
     wtlist = np.ones(nVal) if wt==1 else wt
@@ -191,6 +191,7 @@ def csfit(Amat, flist_in, wt, mulist, method=5, submodels=None, nSubset=1, subse
         if np.linalg.norm(sol0)>1E-16:
             print("  Error after subtracting known solution:", modelErr)
         AC = Amat.dot(theC)
+        print(np.min(AC),np.max(AC))
         # each "fit" is: [rms_err, fval, f_pred, sol, errbar]
         fit_model= []
         if method==101:
