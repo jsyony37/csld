@@ -1,0 +1,4 @@
+numpy>=1.9
+scipy>=0.13
+matplotlib>=1.4
+spglib>=1.9
